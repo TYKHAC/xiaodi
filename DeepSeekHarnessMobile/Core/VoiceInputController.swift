@@ -197,6 +197,12 @@ final class VoiceInputController: NSObject, ObservableObject {
             return
         }
 
+        // recognizer 已就绪，现在才能问 supportsOnDeviceRecognition（实例属性）。
+        // 系统支持时优先走 on-device：隐私更好、不耗流量。
+        // 每次重新判定：request 是复用的，上一轮的状态不能带过来。
+        request.requiresOnDeviceRecognition = false
+        applyOnDeviceIfPossible()
+
         recognitionTask = rz.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
                 guard let self else { return }
@@ -219,19 +225,20 @@ final class VoiceInputController: NSObject, ObservableObject {
         let r = SFSpeechAudioBufferRecognitionRequest()
         r.shouldReportPartialResults = true      // 边说边出字，体验更像 Siri
         r.taskHint = .dictation
-        // 属性初始化器里 self 还不可用，不能调实例方法；
-        // 这里内联判定（SFSpeechRecognizer.supportsOnDeviceRecognition 是静态成员）。
-        if SFSpeechRecognizer.authorizationStatus() == .authorized,
-           SFSpeechRecognizer.supportsOnDeviceRecognition {
-            // 系统支持时优先走 on-device，隐私更好也不耗流量
-            r.requiresOnDeviceRecognition = true
-        }
+        // 注意：supportsOnDeviceRecognition 是【实例】属性，必须有 recognizer 实例才能问。
+        // 属性初始化器里造 recognizer 太早，这里先留默认 false，
+        // 由 beginRecording() 在拿到 recognizer 之后按需打开（见 applyOnDeviceIfPossible）。
         return r
     }()
 
-    /// 只有官方明确支持时才要求 on-device，否则会直接失败
-    private func supportsOnDeviceIfAvailable() -> Bool {
-        SFSpeechRecognizer.supportsOnDeviceRecognition
+    /// 只有官方明确支持时才要求 on-device，否则会直接失败。
+    /// 必须在 recognizer 建好之后调用 —— supportsOnDeviceRecognition 是实例属性。
+    private func applyOnDeviceIfPossible() {
+        guard let recognizer,
+              SFSpeechRecognizer.authorizationStatus() == .authorized,
+              recognizer.supportsOnDeviceRecognition
+        else { return }
+        request.requiresOnDeviceRecognition = true
     }
 
     private func scheduleTranscriptionTimeout() {
