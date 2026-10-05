@@ -116,7 +116,9 @@ for (const [name, ok] of checks) {
 }
 
 // ---- 4. SwiftUI @ObservedObject 与 VoiceInputController 的 ObservableObject 兼容性 ----
-if (!/final class VoiceInputController:\s*ObservableObject/.test(voice)) {
+// 允许多重继承：NSObject 必须排最前（AVSpeechSynthesizerDelegate 是 @objc 协议，
+// Swift 类要实现 @objc 协议就得继承 NSObject），但 ObservableObject 仍必须存在。
+if (!/final class VoiceInputController:[^{]*\bObservableObject\b/.test(voice)) {
   problems.push('VoiceInputController 未声明 ObservableObject —— @ObservedObject 用不了');
 }
 

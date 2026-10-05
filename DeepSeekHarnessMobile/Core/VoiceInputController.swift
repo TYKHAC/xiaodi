@@ -19,7 +19,14 @@ import AVFoundation
 import Speech
 
 @MainActor
-final class VoiceInputController: ObservableObject {
+// 必须继承 NSObject：AVSpeechSynthesizerDelegate 是 @objc 协议，
+// Swift 里想实现 @objc 协议，类就得有 NSObject 基类，否则报
+// "cannot declare conformance to 'NSObjectProtocol' in Swift"。
+final class VoiceInputController: NSObject, ObservableObject {
+
+    override init() {
+        super.init()
+    }
 
     // MARK: - 对外状态（UI 只读这个）
 
@@ -78,7 +85,12 @@ final class VoiceInputController: ObservableObject {
         }
         // 语音识别
         if SFSpeechRecognizer.authorizationStatus() == .notDetermined {
-            _ = await SFSpeechRecognizer.requestAuthorization()
+            // requestAuthorization 只有回调版本，没有 async 重载 —— 自己包一层
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                SFSpeechRecognizer.requestAuthorization { _ in
+                    cont.resume()
+                }
+            }
         }
         permissionDenied = checkPermissionProblem()
     }
@@ -207,15 +219,18 @@ final class VoiceInputController: ObservableObject {
         let r = SFSpeechAudioBufferRecognitionRequest()
         r.shouldReportPartialResults = true      // 边说边出字，体验更像 Siri
         r.taskHint = .dictation
-        if SFSpeechRecognizer.authorizationStatus() == .authorized {
+        // 属性初始化器里 self 还不可用，不能调实例方法；
+        // 这里内联判定（SFSpeechRecognizer.supportsOnDeviceRecognition 是静态成员）。
+        if SFSpeechRecognizer.authorizationStatus() == .authorized,
+           SFSpeechRecognizer.supportsOnDeviceRecognition {
             // 系统支持时优先走 on-device，隐私更好也不耗流量
-            r.requiresOnDeviceRecognition = supportsOnDeviceIfAvailable()
+            r.requiresOnDeviceRecognition = true
         }
         return r
     }()
 
+    /// 只有官方明确支持时才要求 on-device，否则会直接失败
     private func supportsOnDeviceIfAvailable() -> Bool {
-        // 只有官方明确支持时才要求 on-device，否则会直接失败
         SFSpeechRecognizer.supportsOnDeviceRecognition
     }
 

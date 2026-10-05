@@ -18,14 +18,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: 选择 Xcode
-        # 不要写死一个版本路径后不管它存不存在 —— runner 镜像是滚动的，
-        # 版本随时可能被移除。优先用指定的 16.4，不在就退回默认。
+        # 必须用 Xcode 26（本项目用了 iOS 26 SDK 的新 API：
+        # .glassEffect / ToolbarSpacer / buttonSizing 等，这些在 18.x SDK 里不存在）。
+        # macos-15 镜像同时装了 26.0.1 / 26.1.1 / 26.2 / 26.3，取最高可用版本。
+        # 找不到 26 就直接失败 —— 用低版本编会报一堆"no member"的假错误，白烧额度。
         run: |
-          if [ -d /Applications/Xcode_16.4.app ]; then
-            sudo xcode-select -s /Applications/Xcode_16.4.app
-          fi
+          set -euo pipefail
+          for v in 26.3 26.2 26.1.1 26.0.1; do
+            if [ -d "/Applications/Xcode_${v}.app" ]; then
+              sudo xcode-select -s "/Applications/Xcode_${v}.app"
+              echo "::notice::using Xcode ${v}"
+              break
+            fi
+          done
           xcodebuild -version
-          xcodebuild -showsdks | grep -i "iphoneos"
+          echo "--- iphoneos SDKs available ---"
+          xcodebuild -showsdks | grep -i "iOS [0-9]" || true
 
       - name: 缓存 Gradle（KMP 要编 framework，缓存能省 10+ 分钟）
         uses: actions/cache@v4
