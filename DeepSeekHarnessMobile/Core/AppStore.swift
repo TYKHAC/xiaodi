@@ -581,11 +581,9 @@ final class AppStore: ObservableObject {
         // 再接回调。反了的话第一次播报会用错开关。
         self.speakRepliesEnabled = preferences.speakRepliesEnabled
         self.voice.speakReplies = preferences.speakRepliesEnabled
-        self.voice.onTranscribed = { [weak self] text in
-            Task { @MainActor in
-                _ = self?.sendByVoice(text)
-            }
-        }
+        // 注意：voice.onTranscribed 会闭包捕获 self，而 Swift 要求
+        // 「所有存储属性都初始化完毕」之后才能捕获 self。
+        // 所以这行必须放在 init 最末尾（见本 init 结尾处），不能放这里。
         self.questionEffectExecutor = questionEffectExecutor ?? gateway
         self.approvalEffectExecutor = approvalEffectExecutor ?? gateway
         self.backgroundExecutionController = backgroundExecutionController ?? AgentBackgroundExecutionController()
@@ -689,6 +687,16 @@ final class AppStore: ObservableObject {
         self.backgroundExecutionController.onKeepAlivePulse = { [weak self] in
             if self?.gateway.state.isConnected == true { self?.gateway.ping() }
             AgentLiveActivityManager.shared.refreshActiveActivities()
+        }
+
+        // ── 小弟：语音转写结果接到发送 ──
+        // 必须放在 init 的最后：voice.onTranscribed 的闭包会捕获 self，
+        // 而 Swift 要求所有存储属性（含 endpoint 等）都初始化完毕后才允许。
+        // 放在前面会报 "variable 'self.endpoint' used before being initialized"。
+        self.voice.onTranscribed = { [weak self] text in
+            Task { @MainActor in
+                _ = self?.sendByVoice(text)
+            }
         }
     }
 
