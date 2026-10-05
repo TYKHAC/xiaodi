@@ -1,0 +1,928 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3459A8BD9696202CAC9D85A5 /* GatewaySwitcherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B6B2953247E15BDA40F0BB /* GatewaySwitcherView.swift */; };
+		375D401B1B6F03015EC9073D /* GatewayProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E638ED93D0BBFD018966FB52 /* GatewayProfile.swift */; };
+		39FD319C875F4B4A6893D676 /* GatewayProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B53A008218F24CA9A4DB4D1 /* GatewayProtocolTests.swift */; };
+		48857E4314868A4DD9F695EA /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BE407E6C6512836EB108990D /* Foundation.framework */; };
+		5ED39F22065A71FC54D755AC /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61A1F439244BA594BF547C92 /* AppStore.swift */; };
+		605DCE79952E970820A95606 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */; };
+		605DCE79952E970820A95607 /* HumanQuestionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABECFD00017A6E10B1F4A3 /* HumanQuestionView.swift */; };
+		6FED6D958ABD07A258CC53F0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 152A3874C0D169644C9C7B6D /* Assets.xcassets */; };
+		75392054CB69B9596796C57A /* MultiGatewayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEABDA4B6DAF199B320B1BA1 /* MultiGatewayTests.swift */; };
+		7B8DAA4E77DE3665B7E1C087 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98111628697EC1C4FF9878B /* SettingsView.swift */; };
+		80E777AC0855635BC3D12EA7 /* GatewayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61E231D0CD3E07857F861B0 /* GatewayClient.swift */; };
+		8891D9FBE23CCC096061416E /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A37B43613D712F252BA91D7 /* RootView.swift */; };
+		991D4FD90B81F84A0B8B79AD /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12863E736F832D8F502B94A0 /* Theme.swift */; };
+		A0C0FFEE0000000000000001 /* ConversationViewport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0FFEE0000000000000002 /* ConversationViewport.swift */; };
+		A0C0FFEE0000000000000003 /* ConversationTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C0FFEE0000000000000004 /* ConversationTimeline.swift */; };
+		A1A0C0000000000000000001 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1A0C0000000000000000002 /* LaunchScreen.storyboard */; };
+		A1B2C3D4E5F60718293A4B5C /* ApprovalRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* ApprovalRequestView.swift */; };
+		A9F1X010 /* VoiceInputController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1X011 /* VoiceInputController.swift */; };
+	A9F1X020 /* SiriMicButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1X021 /* SiriMicButton.swift */; };
+	A9F100000000000000000001 /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000002 /* AppPreferences.swift */; };
+		A9F200000000000000000001 /* PairingPayloadParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F200000000000000000002 /* PairingPayloadParser.swift */; };
+		A9F300000000000000000001 /* KMPDomainIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F300000000000000000002 /* KMPDomainIntents.swift */; };
+		A9F600000000000000000001 /* RequestTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F600000000000000000002 /* RequestTracker.swift */; };
+		A9F800000000000000000001 /* HistorySyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F800000000000000000002 /* HistorySyncEngine.swift */; };
+		A9F900000000000000000001 /* AttachmentLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F900000000000000000002 /* AttachmentLoader.swift */; };
+		A9FA00000000000000000001 /* AgentBackgroundExecutionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FA00000000000000000002 /* AgentBackgroundExecutionController.swift */; };
+		A9FB00000000000000000001 /* GatewayFrameRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FB00000000000000000002 /* GatewayFrameRouter.swift */; };
+		A9FC00000000000000000001 /* KMPSharedAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FC00000000000000000002 /* KMPSharedAdapter.swift */; };
+		A9FD00000000000000000001 /* AgentBackgroundKeepAliveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FD00000000000000000002 /* AgentBackgroundKeepAliveManager.swift */; };
+		A9FE00000000000000000001 /* AgentUserNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FE00000000000000000002 /* AgentUserNotificationManager.swift */; };
+		AFAE90EEB4462AD84169D356 /* GatewayModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 954FCEA4A6E71F3D1A22BB53 /* GatewayModels.swift */; };
+		B0C0FFEE0000000000000001 /* HarnessAnimatedBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C0FFEE0000000000000002 /* HarnessAnimatedBackground.swift */; };
+		B0C0FFEE0000000000000003 /* HarnessBackground.metal in Sources */ = {isa = PBXBuildFile; fileRef = B0C0FFEE0000000000000004 /* HarnessBackground.metal */; };
+		C075849EE750C3CCD2C87FC7 /* MultiGatewayStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5FF365A80AA28B4D4CF2347 /* MultiGatewayStore.swift */; };
+		C5F737EBF5077A9BF35E9F64 /* TrajectoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65009160A0642089906B54DF /* TrajectoryView.swift */; };
+		C7A710000000000000000001 /* ChatLayout in Frameworks */ = {isa = PBXBuildFile; productRef = C7A710000000000000000003 /* ChatLayout */; };
+		CA11E0000000000000000001 /* ImageAttachmentCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11E0000000000000000002 /* ImageAttachmentCache.swift */; };
+		CA11E0000000000000000003 /* ImagePreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11E0000000000000000004 /* ImagePreprocessor.swift */; };
+		CA11E0000000000000000009 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11E000000000000000000A /* L10n.swift */; };
+		CA11E000000000000000000B /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CA11E000000000000000000C /* Localizable.xcstrings */; };
+		CA11E000000000000000000D /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CA11E000000000000000000E /* InfoPlist.xcstrings */; };
+		CA11E000000000000000000F /* LocalizationCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11E0000000000000000011 /* LocalizationCatalogTests.swift */; };
+		D3A40BFC0B9C8D4B1C8FAA95 /* DeepSeekHarnessMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430CA64DF207C7EF58574336 /* DeepSeekHarnessMobileApp.swift */; };
+		E20191A4C7B1C0A8FF57CAC1 /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF581253EBCFEB43865AB51 /* Glass.swift */; };
+		E73A2DB9D678DA4B8C01E349 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4CE3D78565179C422C796509 /* MarkdownUI */; };
+		E7585B9F7F89A3084B6E0182 /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D610757C1FF81FD953A9D000 /* WorkspaceView.swift */; };
+		F1A000000000000000000001 /* AgentActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000011 /* AgentActivityAttributes.swift */; };
+		F1A000000000000000000002 /* AgentActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000011 /* AgentActivityAttributes.swift */; };
+		F1A000000000000000000003 /* AgentApprovalIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000012 /* AgentApprovalIntents.swift */; };
+		F1A000000000000000000004 /* AgentApprovalIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000012 /* AgentApprovalIntents.swift */; };
+		F1A000000000000000000005 /* AgentLiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000013 /* AgentLiveActivityManager.swift */; };
+		F1A000000000000000000006 /* AgentLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000014 /* AgentLiveActivityWidget.swift */; };
+		F1A000000000000000000007 /* AgentLiveActivityWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000016 /* AgentLiveActivityWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F1A000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1A000000000000000000017 /* Assets.xcassets */; };
+		F5CD0CFD51B8D80944F87550 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BE407E6C6512836EB108990D /* Foundation.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A1CBB12844986E16990B5C5A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DBC59CB58F3644757A020517 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 660802D096F9D6E6D171BFE5;
+			remoteInfo = DeepSeekHarnessMobile;
+		};
+		F1A000000000000000000041 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DBC59CB58F3644757A020517 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F1A000000000000000000040;
+			remoteInfo = AgentLiveActivityWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F1A000000000000000000033 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F1A000000000000000000007 /* AgentLiveActivityWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0B53A008218F24CA9A4DB4D1 /* GatewayProtocolTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewayProtocolTests.swift; sourceTree = "<group>"; };
+		12863E736F832D8F502B94A0 /* Theme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		152A3874C0D169644C9C7B6D /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		38457CD5C46830D1CA7E6D73 /* DshMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DshMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		430CA64DF207C7EF58574336 /* DeepSeekHarnessMobileApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeepSeekHarnessMobileApp.swift; sourceTree = "<group>"; };
+		59B069578BB7F31AD35F601A /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5A37B43613D712F252BA91D7 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		61A1F439244BA594BF547C92 /* AppStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
+		65009160A0642089906B54DF /* TrajectoryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrajectoryView.swift; sourceTree = "<group>"; };
+		65B6B2953247E15BDA40F0BB /* GatewaySwitcherView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewaySwitcherView.swift; sourceTree = "<group>"; };
+		954FCEA4A6E71F3D1A22BB53 /* GatewayModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewayModels.swift; sourceTree = "<group>"; };
+		A0C0FFEE0000000000000002 /* ConversationViewport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationViewport.swift; sourceTree = "<group>"; };
+		A0C0FFEE0000000000000004 /* ConversationTimeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationTimeline.swift; sourceTree = "<group>"; };
+		A1A0C0000000000000000002 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5D /* ApprovalRequestView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ApprovalRequestView.swift; sourceTree = "<group>"; };
+		A9F1X011 /* VoiceInputController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceInputController.swift; sourceTree = "<group>"; };
+	A9F1X021 /* SiriMicButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiriMicButton.swift; sourceTree = "<group>"; };
+	A9F100000000000000000002 /* AppPreferences.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
+		A9F200000000000000000002 /* PairingPayloadParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PairingPayloadParser.swift; sourceTree = "<group>"; };
+		A9F300000000000000000002 /* KMPDomainIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KMPDomainIntents.swift; sourceTree = "<group>"; };
+		A9F600000000000000000002 /* RequestTracker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RequestTracker.swift; sourceTree = "<group>"; };
+		A9F800000000000000000002 /* HistorySyncEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HistorySyncEngine.swift; sourceTree = "<group>"; };
+		A9F900000000000000000002 /* AttachmentLoader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentLoader.swift; sourceTree = "<group>"; };
+		A9FA00000000000000000002 /* AgentBackgroundExecutionController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentBackgroundExecutionController.swift; sourceTree = "<group>"; };
+		A9FB00000000000000000002 /* GatewayFrameRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewayFrameRouter.swift; sourceTree = "<group>"; };
+		A9FC00000000000000000002 /* KMPSharedAdapter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KMPSharedAdapter.swift; sourceTree = "<group>"; };
+		A9FD00000000000000000002 /* AgentBackgroundKeepAliveManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentBackgroundKeepAliveManager.swift; sourceTree = "<group>"; };
+		A9FE00000000000000000002 /* AgentUserNotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentUserNotificationManager.swift; sourceTree = "<group>"; };
+		B0C0FFEE0000000000000002 /* HarnessAnimatedBackground.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HarnessAnimatedBackground.swift; sourceTree = "<group>"; };
+		B0C0FFEE0000000000000004 /* HarnessBackground.metal */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.metal; path = HarnessBackground.metal; sourceTree = "<group>"; };
+		B64F29E9B8346B9A678CA487 /* DeepSeekHarnessMobileTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DeepSeekHarnessMobileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BE407E6C6512836EB108990D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		CA11E0000000000000000002 /* ImageAttachmentCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImageAttachmentCache.swift; sourceTree = "<group>"; };
+		CA11E0000000000000000004 /* ImagePreprocessor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImagePreprocessor.swift; sourceTree = "<group>"; };
+		CA11E000000000000000000A /* L10n.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		CA11E000000000000000000C /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		CA11E000000000000000000E /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		CA11E0000000000000000011 /* LocalizationCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalizationCatalogTests.swift; sourceTree = "<group>"; };
+		D610757C1FF81FD953A9D000 /* WorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
+		D98111628697EC1C4FF9878B /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		E5FF365A80AA28B4D4CF2347 /* MultiGatewayStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultiGatewayStore.swift; sourceTree = "<group>"; };
+		E61E231D0CD3E07857F861B0 /* GatewayClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewayClient.swift; sourceTree = "<group>"; };
+		E638ED93D0BBFD018966FB52 /* GatewayProfile.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewayProfile.swift; sourceTree = "<group>"; };
+		EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
+		EEABECFD00017A6E10B1F4A3 /* HumanQuestionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HumanQuestionView.swift; sourceTree = "<group>"; };
+		F1A000000000000000000011 /* AgentActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentActivityAttributes.swift; sourceTree = "<group>"; };
+		F1A000000000000000000012 /* AgentApprovalIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentApprovalIntents.swift; sourceTree = "<group>"; };
+		F1A000000000000000000013 /* AgentLiveActivityManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentLiveActivityManager.swift; sourceTree = "<group>"; };
+		F1A000000000000000000014 /* AgentLiveActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentLiveActivityWidget.swift; sourceTree = "<group>"; };
+		F1A000000000000000000015 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F1A000000000000000000016 /* AgentLiveActivityWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AgentLiveActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F1A000000000000000000017 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FCF581253EBCFEB43865AB51 /* Glass.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Glass.swift; sourceTree = "<group>"; };
+		FEABDA4B6DAF199B320B1BA1 /* MultiGatewayTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultiGatewayTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2730CFAAB3AB8815D8F74EB4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5CD0CFD51B8D80944F87550 /* Foundation.framework in Frameworks */,
+				E73A2DB9D678DA4B8C01E349 /* MarkdownUI in Frameworks */,
+				C7A710000000000000000001 /* ChatLayout in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EEDC2B8D9F6AFD676D97B2E2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				48857E4314868A4DD9F695EA /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F1A000000000000000000031 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		08B74F3553B9DFCE13B07DE9 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A9F1X011 /* VoiceInputController.swift */,
+				A9F100000000000000000002 /* AppPreferences.swift */,
+				A9F200000000000000000002 /* PairingPayloadParser.swift */,
+				A9F300000000000000000002 /* KMPDomainIntents.swift */,
+				A9F600000000000000000002 /* RequestTracker.swift */,
+				A9F800000000000000000002 /* HistorySyncEngine.swift */,
+				A9F900000000000000000002 /* AttachmentLoader.swift */,
+				A9FA00000000000000000002 /* AgentBackgroundExecutionController.swift */,
+				A9FD00000000000000000002 /* AgentBackgroundKeepAliveManager.swift */,
+				A9FE00000000000000000002 /* AgentUserNotificationManager.swift */,
+				A9FB00000000000000000002 /* GatewayFrameRouter.swift */,
+				A9FC00000000000000000002 /* KMPSharedAdapter.swift */,
+				61A1F439244BA594BF547C92 /* AppStore.swift */,
+				CA11E0000000000000000002 /* ImageAttachmentCache.swift */,
+				CA11E0000000000000000004 /* ImagePreprocessor.swift */,
+				A0C0FFEE0000000000000004 /* ConversationTimeline.swift */,
+				E61E231D0CD3E07857F861B0 /* GatewayClient.swift */,
+				954FCEA4A6E71F3D1A22BB53 /* GatewayModels.swift */,
+				CA11E000000000000000000A /* L10n.swift */,
+				12863E736F832D8F502B94A0 /* Theme.swift */,
+				E638ED93D0BBFD018966FB52 /* GatewayProfile.swift */,
+				E5FF365A80AA28B4D4CF2347 /* MultiGatewayStore.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		0CABA197D44C2A9AA01CF6FF /* DeepSeekHarnessMobileTests */ = {
+			isa = PBXGroup;
+			children = (
+				0B53A008218F24CA9A4DB4D1 /* GatewayProtocolTests.swift */,
+				CA11E0000000000000000011 /* LocalizationCatalogTests.swift */,
+				FEABDA4B6DAF199B320B1BA1 /* MultiGatewayTests.swift */,
+			);
+			path = DeepSeekHarnessMobileTests;
+			sourceTree = "<group>";
+		};
+		20DF8D6DFD28A5D750C6FC28 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E2B28127A662FC6BA3231040 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3BAEAAE97D242C997E1AB80A /* DeepSeekHarnessMobile */ = {
+			isa = PBXGroup;
+			children = (
+				61AF62CCF5C37C8ADF22DF14 /* App */,
+				08B74F3553B9DFCE13B07DE9 /* Core */,
+				BB3B325B846637A6ED66C228 /* Components */,
+				B0C0FFEE0000000000000005 /* Shaders */,
+				C0FFC63B1CD5F1F40418350B /* Views */,
+				7CECE0900CF815A6EB3A938D /* Resources */,
+				F1A000000000000000000020 /* LiveActivity */,
+			);
+			path = DeepSeekHarnessMobile;
+			sourceTree = "<group>";
+		};
+		40772A4CC858771C52FF6406 = {
+			isa = PBXGroup;
+			children = (
+				D7854C843240E809A949A26E /* Products */,
+				20DF8D6DFD28A5D750C6FC28 /* Frameworks */,
+				3BAEAAE97D242C997E1AB80A /* DeepSeekHarnessMobile */,
+				F1A000000000000000000021 /* AgentLiveActivityWidget */,
+				0CABA197D44C2A9AA01CF6FF /* DeepSeekHarnessMobileTests */,
+			);
+			sourceTree = "<group>";
+		};
+		61AF62CCF5C37C8ADF22DF14 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				430CA64DF207C7EF58574336 /* DeepSeekHarnessMobileApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		7CECE0900CF815A6EB3A938D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				59B069578BB7F31AD35F601A /* Info.plist */,
+				A1A0C0000000000000000002 /* LaunchScreen.storyboard */,
+				152A3874C0D169644C9C7B6D /* Assets.xcassets */,
+				CA11E000000000000000000C /* Localizable.xcstrings */,
+				CA11E000000000000000000E /* InfoPlist.xcstrings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		B0C0FFEE0000000000000005 /* Shaders */ = {
+			isa = PBXGroup;
+			children = (
+				B0C0FFEE0000000000000004 /* HarnessBackground.metal */,
+			);
+			path = Shaders;
+			sourceTree = "<group>";
+		};
+		BB3B325B846637A6ED66C228 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				A9F1X021 /* SiriMicButton.swift */,
+				FCF581253EBCFEB43865AB51 /* Glass.swift */,
+				A0C0FFEE0000000000000002 /* ConversationViewport.swift */,
+				B0C0FFEE0000000000000002 /* HarnessAnimatedBackground.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		C0FFC63B1CD5F1F40418350B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */,
+				EEABECFD00017A6E10B1F4A3 /* HumanQuestionView.swift */,
+				A1B2C3D4E5F60718293A4B5D /* ApprovalRequestView.swift */,
+				5A37B43613D712F252BA91D7 /* RootView.swift */,
+				D98111628697EC1C4FF9878B /* SettingsView.swift */,
+				65009160A0642089906B54DF /* TrajectoryView.swift */,
+				D610757C1FF81FD953A9D000 /* WorkspaceView.swift */,
+				65B6B2953247E15BDA40F0BB /* GatewaySwitcherView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D7854C843240E809A949A26E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				38457CD5C46830D1CA7E6D73 /* DshMobile.app */,
+				F1A000000000000000000016 /* AgentLiveActivityWidget.appex */,
+				B64F29E9B8346B9A678CA487 /* DeepSeekHarnessMobileTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E2B28127A662FC6BA3231040 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				BE407E6C6512836EB108990D /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		F1A000000000000000000020 /* LiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				F1A000000000000000000011 /* AgentActivityAttributes.swift */,
+				F1A000000000000000000012 /* AgentApprovalIntents.swift */,
+				F1A000000000000000000013 /* AgentLiveActivityManager.swift */,
+			);
+			path = LiveActivity;
+			sourceTree = "<group>";
+		};
+		F1A000000000000000000021 /* AgentLiveActivityWidget */ = {
+			isa = PBXGroup;
+			children = (
+				F1A000000000000000000014 /* AgentLiveActivityWidget.swift */,
+				F1A000000000000000000015 /* Info.plist */,
+				F1A000000000000000000017 /* Assets.xcassets */,
+			);
+			path = AgentLiveActivityWidget;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		660802D096F9D6E6D171BFE5 /* DeepSeekHarnessMobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 62C8D12628E44A75D40278DD /* Build configuration list for PBXNativeTarget "DeepSeekHarnessMobile" */;
+			buildPhases = (
+				A9FC00000000000000000003 /* Build KMP Framework */,
+				83446887BD782B48B6E0170F /* Sources */,
+				2730CFAAB3AB8815D8F74EB4 /* Frameworks */,
+				29B92305AFBD472635128223 /* Resources */,
+				F1A000000000000000000033 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F1A000000000000000000042 /* PBXTargetDependency */,
+			);
+			name = DeepSeekHarnessMobile;
+			packageProductDependencies = (
+				4CE3D78565179C422C796509 /* MarkdownUI */,
+				C7A710000000000000000003 /* ChatLayout */,
+			);
+			productName = DshMobile;
+			productReference = 38457CD5C46830D1CA7E6D73 /* DshMobile.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7515E0402B76392350DE0E00 /* DeepSeekHarnessMobileTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 97F6277C67AAFA89642DA69C /* Build configuration list for PBXNativeTarget "DeepSeekHarnessMobileTests" */;
+			buildPhases = (
+				19F565C157878369B2723E65 /* Sources */,
+				EEDC2B8D9F6AFD676D97B2E2 /* Frameworks */,
+				EE7A7277809085DE08D49D97 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DD2CB1177812E5F54629AA43 /* PBXTargetDependency */,
+			);
+			name = DeepSeekHarnessMobileTests;
+			productName = DeepSeekHarnessMobileTests;
+			productReference = B64F29E9B8346B9A678CA487 /* DeepSeekHarnessMobileTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F1A000000000000000000040 /* AgentLiveActivityWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F1A000000000000000000052 /* Build configuration list for PBXNativeTarget "AgentLiveActivityWidget" */;
+			buildPhases = (
+				F1A000000000000000000030 /* Sources */,
+				F1A000000000000000000031 /* Frameworks */,
+				F1A000000000000000000032 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AgentLiveActivityWidget;
+			packageProductDependencies = (
+			);
+			productName = AgentLiveActivityWidget;
+			productReference = F1A000000000000000000016 /* AgentLiveActivityWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DBC59CB58F3644757A020517 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					F1A000000000000000000040 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = E0E3EE1AA31431CC329FAB43 /* Build configuration list for PBXProject "DeepSeekHarnessMobile" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				"zh-Hans",
+			);
+			mainGroup = 40772A4CC858771C52FF6406;
+			packageReferences = (
+				A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "Vendor/swift-markdown-ui" */,
+				C7A710000000000000000004 /* XCRemoteSwiftPackageReference "ChatLayout" */,
+			);
+			productRefGroup = D7854C843240E809A949A26E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				660802D096F9D6E6D171BFE5 /* DeepSeekHarnessMobile */,
+				F1A000000000000000000040 /* AgentLiveActivityWidget */,
+				7515E0402B76392350DE0E00 /* DeepSeekHarnessMobileTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		29B92305AFBD472635128223 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1A0C0000000000000000001 /* LaunchScreen.storyboard in Resources */,
+				6FED6D958ABD07A258CC53F0 /* Assets.xcassets in Resources */,
+				CA11E000000000000000000B /* Localizable.xcstrings in Resources */,
+				CA11E000000000000000000D /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EE7A7277809085DE08D49D97 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F1A000000000000000000032 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1A000000000000000000008 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A9FC00000000000000000003 /* Build KMP Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build KMP Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\ncd \"$SRCROOT\"\nif [ -z \"${ANDROID_HOME:-}\" ]; then\n  export ANDROID_HOME=\"${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}\"\nfi\ncase \"$CONFIGURATION\" in\n  *[Rr]elease*) KMP_BUILD_TYPE=Release ;;\n  *) KMP_BUILD_TYPE=Debug ;;\nesac\nif [ \"$PLATFORM_NAME\" = \"iphonesimulator\" ]; then\n  case \"$ARCHS\" in\n    *x86_64*) KMP_TARGET=IosX64 ;;\n    *) KMP_TARGET=IosSimulatorArm64 ;;\n  esac\nelse\n  KMP_TARGET=IosArm64\nfi\n\"$SRCROOT/gradlew\" \":shared:link${KMP_BUILD_TYPE}Framework${KMP_TARGET}\" --quiet\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		19F565C157878369B2723E65 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				39FD319C875F4B4A6893D676 /* GatewayProtocolTests.swift in Sources */,
+				CA11E000000000000000000F /* LocalizationCatalogTests.swift in Sources */,
+				75392054CB69B9596796C57A /* MultiGatewayTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83446887BD782B48B6E0170F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1A000000000000000000001 /* AgentActivityAttributes.swift in Sources */,
+				F1A000000000000000000003 /* AgentApprovalIntents.swift in Sources */,
+				F1A000000000000000000005 /* AgentLiveActivityManager.swift in Sources */,
+				D3A40BFC0B9C8D4B1C8FAA95 /* DeepSeekHarnessMobileApp.swift in Sources */,
+				A9F1X010 /* VoiceInputController.swift in Sources */,
+	A9F1X020 /* SiriMicButton.swift in Sources */,
+	A9F100000000000000000001 /* AppPreferences.swift in Sources */,
+				A9F200000000000000000001 /* PairingPayloadParser.swift in Sources */,
+				A9F300000000000000000001 /* KMPDomainIntents.swift in Sources */,
+				A9F600000000000000000001 /* RequestTracker.swift in Sources */,
+				A9F800000000000000000001 /* HistorySyncEngine.swift in Sources */,
+				A9F900000000000000000001 /* AttachmentLoader.swift in Sources */,
+				A9FA00000000000000000001 /* AgentBackgroundExecutionController.swift in Sources */,
+				A9FD00000000000000000001 /* AgentBackgroundKeepAliveManager.swift in Sources */,
+				A9FE00000000000000000001 /* AgentUserNotificationManager.swift in Sources */,
+				A9FB00000000000000000001 /* GatewayFrameRouter.swift in Sources */,
+				A9FC00000000000000000001 /* KMPSharedAdapter.swift in Sources */,
+				5ED39F22065A71FC54D755AC /* AppStore.swift in Sources */,
+				CA11E0000000000000000001 /* ImageAttachmentCache.swift in Sources */,
+				CA11E0000000000000000003 /* ImagePreprocessor.swift in Sources */,
+				A0C0FFEE0000000000000003 /* ConversationTimeline.swift in Sources */,
+				80E777AC0855635BC3D12EA7 /* GatewayClient.swift in Sources */,
+				AFAE90EEB4462AD84169D356 /* GatewayModels.swift in Sources */,
+				CA11E0000000000000000009 /* L10n.swift in Sources */,
+				991D4FD90B81F84A0B8B79AD /* Theme.swift in Sources */,
+				E20191A4C7B1C0A8FF57CAC1 /* Glass.swift in Sources */,
+				A0C0FFEE0000000000000001 /* ConversationViewport.swift in Sources */,
+				B0C0FFEE0000000000000001 /* HarnessAnimatedBackground.swift in Sources */,
+				B0C0FFEE0000000000000003 /* HarnessBackground.metal in Sources */,
+				605DCE79952E970820A95606 /* ConversationView.swift in Sources */,
+				605DCE79952E970820A95607 /* HumanQuestionView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* ApprovalRequestView.swift in Sources */,
+				8891D9FBE23CCC096061416E /* RootView.swift in Sources */,
+				7B8DAA4E77DE3665B7E1C087 /* SettingsView.swift in Sources */,
+				C5F737EBF5077A9BF35E9F64 /* TrajectoryView.swift in Sources */,
+				E7585B9F7F89A3084B6E0182 /* WorkspaceView.swift in Sources */,
+				375D401B1B6F03015EC9073D /* GatewayProfile.swift in Sources */,
+				C075849EE750C3CCD2C87FC7 /* MultiGatewayStore.swift in Sources */,
+				3459A8BD9696202CAC9D85A5 /* GatewaySwitcherView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F1A000000000000000000030 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1A000000000000000000002 /* AgentActivityAttributes.swift in Sources */,
+				F1A000000000000000000004 /* AgentApprovalIntents.swift in Sources */,
+				F1A000000000000000000006 /* AgentLiveActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DD2CB1177812E5F54629AA43 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = DeepSeekHarnessMobile;
+			target = 660802D096F9D6E6D171BFE5 /* DeepSeekHarnessMobile */;
+			targetProxy = A1CBB12844986E16990B5C5A /* PBXContainerItemProxy */;
+		};
+		F1A000000000000000000042 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F1A000000000000000000040 /* AgentLiveActivityWidget */;
+			targetProxy = F1A000000000000000000041 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0DD215C4F718C79148B6B0EE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				DEVELOPMENT_TEAM = SHVN6YQNQF;
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/shared/build/bin/iosArm64/debugFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(SRCROOT)/shared/build/bin/iosSimulatorArm64/debugFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(SRCROOT)/shared/build/bin/iosX64/debugFramework";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clark.dshmobile.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DshMobile.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/DshMobile";
+			};
+			name = Debug;
+		};
+		1B08670CCE6572CDA2FA9254 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SHVN6YQNQF;
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/shared/build/bin/iosArm64/debugFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(SRCROOT)/shared/build/bin/iosSimulatorArm64/debugFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(SRCROOT)/shared/build/bin/iosX64/debugFramework";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DeepSeekHarnessMobile/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clark.dshmobile;
+				PRODUCT_MODULE_NAME = DeepSeekHarnessMobile;
+				PRODUCT_NAME = XiaoDi;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		6CEBD593F2F351E87AE7198C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				DEVELOPMENT_TEAM = SHVN6YQNQF;
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(SRCROOT)/shared/build/bin/iosSimulatorArm64/releaseFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(SRCROOT)/shared/build/bin/iosX64/releaseFramework";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clark.dshmobile.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DshMobile.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/DshMobile";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		893296900534B47E3B2D3F2A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9F4AB37F5B2D9A876C06B532 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F1A000000000000000000050 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 14;
+				DEVELOPMENT_TEAM = SHVN6YQNQF;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AgentLiveActivityWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.6.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clark.dshmobile.AgentLiveActivityWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		F1A000000000000000000051 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 14;
+				DEVELOPMENT_TEAM = SHVN6YQNQF;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AgentLiveActivityWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.6.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clark.dshmobile.AgentLiveActivityWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		FD30CB375EBC3646AECADEE1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SHVN6YQNQF;
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=arm64]" = "$(SRCROOT)/shared/build/bin/iosSimulatorArm64/releaseFramework";
+				"FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*][arch=x86_64]" = "$(SRCROOT)/shared/build/bin/iosX64/releaseFramework";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DeepSeekHarnessMobile/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clark.dshmobile;
+				PRODUCT_MODULE_NAME = DeepSeekHarnessMobile;
+				PRODUCT_NAME = XiaoDi;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		62C8D12628E44A75D40278DD /* Build configuration list for PBXNativeTarget "DeepSeekHarnessMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FD30CB375EBC3646AECADEE1 /* Release */,
+				1B08670CCE6572CDA2FA9254 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		97F6277C67AAFA89642DA69C /* Build configuration list for PBXNativeTarget "DeepSeekHarnessMobileTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CEBD593F2F351E87AE7198C /* Release */,
+				0DD215C4F718C79148B6B0EE /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E0E3EE1AA31431CC329FAB43 /* Build configuration list for PBXProject "DeepSeekHarnessMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9F4AB37F5B2D9A876C06B532 /* Debug */,
+				893296900534B47E3B2D3F2A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F1A000000000000000000052 /* Build configuration list for PBXNativeTarget "AgentLiveActivityWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F1A000000000000000000051 /* Release */,
+				F1A000000000000000000050 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "Vendor/swift-markdown-ui" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "Vendor/swift-markdown-ui";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C7A710000000000000000004 /* XCRemoteSwiftPackageReference "ChatLayout" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ekazaev/ChatLayout";
+			requirement = {
+				kind = exactVersion;
+				version = 2.4.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4CE3D78565179C422C796509 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "Vendor/swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+		C7A710000000000000000003 /* ChatLayout */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C7A710000000000000000004 /* XCRemoteSwiftPackageReference "ChatLayout" */;
+			productName = ChatLayout;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = DBC59CB58F3644757A020517 /* Project object */;
+}

@@ -1,0 +1,1196 @@
+import SwiftUI
+import AVFoundation
+
+struct WorkspaceView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var hosts: MultiGatewayStore
+    let onOpenSession: (SessionSummary) -> Void
+    let onNewSession: () -> Void
+    let onSettings: () -> Void
+    let onPlugins: () -> Void
+    let onScheduledTasks: () -> Void
+    @State private var searchQuery = ""
+    @State private var renamingSession: SessionSummary?
+    @State private var renamedTitle = ""
+    @State private var archivingSession: SessionSummary?
+    @State private var connectionIsReady = false
+    @State private var showsDirectoryBrowser = false
+    @State private var showsQRScanner = false
+    @State private var showsManualPairing = false
+    @State private var drawerOffset: CGFloat = 0
+    @State private var drawerDragStart: CGFloat?
+    @FocusState private var sessionSearchIsFocused: Bool
+
+    var body: some View {
+        GeometryReader { geometry in
+            let drawerWidth = min(geometry.size.width * 0.76, 360)
+            let progress = min(max(drawerOffset / max(drawerWidth, 1), 0), 1)
+            let dimProgress = min(max((progress - 0.45) / 0.55, 0), 1)
+            let dimOpacity = 0.16 * dimProgress * dimProgress * (3 - 2 * dimProgress)
+            let topInset = geometry.safeAreaInsets.top
+            let fullHeight = geometry.size.height + topInset + geometry.safeAreaInsets.bottom
+
+            ZStack(alignment: .leading) {
+                (colorScheme == .dark
+                    ? Color(red: 36.0 / 255, green: 36.0 / 255, blue: 38.0 / 255)
+                    : Color.white)
+                drawerContent(progress: progress, topInset: topInset, width: drawerWidth)
+                    .frame(width: drawerWidth, height: fullHeight, alignment: .topLeading)
+
+                workspaceContent(openDrawer: { openDrawer(width: drawerWidth) }, topInset: topInset)
+                    .frame(width: geometry.size.width, height: fullHeight)
+                    .background(DSHColor.navy)
+                    .overlay {
+                        Color.black.opacity(dimOpacity)
+                            .allowsHitTesting(false)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 48, style: .continuous))
+                    .compositingGroup()
+                    .shadow(
+                        color: .black.opacity(0.12 * progress),
+                        radius: 9 * progress,
+                        x: -2 * progress,
+                        y: 0
+                    )
+                    .shadow(
+                        color: .black.opacity(0.30 * progress),
+                        radius: 26 * progress,
+                        x: -4 * progress,
+                        y: 0
+                    )
+                    .overlay(alignment: .leading) {
+                        if progress > 0.98 {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { closeDrawer() }
+                                .accessibilityLabel("关闭侧边栏")
+                                .accessibilityAddTraits(.isButton)
+                        }
+                    }
+                    .offset(x: drawerOffset)
+            }
+            .frame(width: geometry.size.width, height: fullHeight)
+            .offset(y: -topInset)
+            .simultaneousGesture(drawerDrag(width: drawerWidth))
+        }
+        .background(DSHColor.navy.ignoresSafeArea())
+        .onChange(of: drawerOffset) { _, value in
+            if value > 0 { sessionSearchIsFocused = false }
+        }
+        .foregroundStyle(.white)
+        .onAppear {
+            store.refreshRemoteState()
+        }
+        .onReceive(store.gateway.$state) { connectionIsReady = $0.isConnected }
+        .alert("重命名会话", isPresented: Binding(
+            get: { renamingSession != nil },
+            set: { if !$0 { renamingSession = nil } }
+        )) {
+            TextField("会话名称", text: $renamedTitle)
+            Button("取消", role: .cancel) { renamingSession = nil }
+            Button("保存") {
+                if let session = renamingSession { store.renameSession(session.id, title: renamedTitle) }
+                renamingSession = nil
+            }
+            .disabled(renamedTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .alert("删除会话？", isPresented: Binding(
+            get: { archivingSession != nil },
+            set: { if !$0 { archivingSession = nil } }
+        )) {
+            Button("取消", role: .cancel) { archivingSession = nil }
+            Button("删除", role: .destructive) {
+                if let session = archivingSession { store.archiveSession(session.id) }
+                archivingSession = nil
+            }
+        } message: {
+            Text("会话将被归档并从列表隐藏，历史记录会保留。")
+        }
+        .onChange(of: searchQuery) { _, value in store.search(value) }
+        .sheet(isPresented: $showsDirectoryBrowser) {
+            DirectoryBrowserSheet()
+                .environmentObject(store)
+        }
+        .fullScreenCover(isPresented: $showsQRScanner) {
+            GatewayQRScannerView(
+                onCode: handleScannedCode,
+                onCancel: { showsQRScanner = false },
+                onFailure: { message in
+                    showsQRScanner = false
+                    store.lastError = message
+                }
+            )
+        }
+        .sheet(isPresented: $showsManualPairing) {
+            ManualGatewayPairingSheet(gateway: hosts.pairingStore?.gateway ?? store.gateway)
+                .environmentObject(store)
+        }
+    }
+
+    private func workspaceContent(openDrawer: @escaping () -> Void, topInset: CGFloat) -> some View {
+        ZStack {
+            DeepOceanBackground()
+                .contentShape(Rectangle())
+                .onTapGesture { sessionSearchIsFocused = false }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        header(openDrawer: openDrawer).id("workspace-header")
+                        GatewaySwitcherBar()
+                    }
+                    Spacer(minLength: 44)
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("探索未至之境")
+                            .font(.system(size: 32, weight: .bold))
+                        Text("DeepSeek Harness 预览版")
+                            .font(.subheadline).foregroundStyle(.white.opacity(0.65))
+                    }
+                    .id("workspace-hero")
+                    workspaceCard.id("workspace-card")
+                    newSessionButton.id("workspace-new-session")
+                    sessionsHeader.id("workspace-sessions-header")
+                    sessionSearch.id("workspace-session-search")
+                    if displayedSessions.isEmpty {
+                        emptySessions.id("workspace-sessions-empty")
+                    } else {
+                        sessionsList
+                    }
+                    Spacer(minLength: 24)
+                }
+                .padding(.horizontal, 22).padding(.top, topInset + 18)
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .scrollDisabled(drawerDragStart != nil || drawerOffset > 0)
+        }
+        // A tap handled by empty layout content does not reach the background
+        // layer. Keep a container-level fallback; controls retain their own
+        // actions and the search field consumes its tap while becoming focused.
+        .onTapGesture { sessionSearchIsFocused = false }
+    }
+
+    private func header(openDrawer: @escaping () -> Void) -> some View {
+        HStack {
+            Button(action: openDrawer) { HarnessMark() }
+                .buttonStyle(.plain)
+                .accessibilityLabel("打开侧边栏")
+            Spacer()
+            authenticationMenu
+            settingsButton
+                // Match the outer glass circle to the workspace cards' trailing edge.
+                .padding(.trailing, -4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func drawerContent(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Image("DshBrandWordmark")
+                .resizable()
+                .scaledToFit()
+                .colorInvertIfNeeded(colorScheme == .dark)
+                .frame(width: min(width - 48, 216), alignment: .leading)
+                .accessibilityLabel("DeepSeek Harness")
+                .padding(.leading, 12)
+                .padding(.bottom, 16)
+
+            drawerItem("插件", icon: {
+                Image("DshPluginPinwheel")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 22, height: 22)
+                    .frame(width: 24)
+            }, action: { selectDrawerItem(onPlugins) })
+            drawerItem("定时任务", icon: {
+                Image(systemName: "clock")
+                    .font(.system(size: 20, weight: .medium))
+                    .frame(width: 24)
+            }, action: { selectDrawerItem(onScheduledTasks) })
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, topInset + 18)
+        .foregroundStyle(Color(uiColor: .label))
+        .opacity(0.6 + 0.4 * progress)
+        .scaleEffect(0.9 + 0.1 * progress, anchor: .leading)
+        .accessibilityHidden(progress == 0)
+    }
+
+    private func drawerItem<Icon: View>(
+        _ title: String,
+        @ViewBuilder icon: () -> Icon,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                icon()
+                Text(title).font(.system(size: 17))
+                Spacer(minLength: 0)
+            }
+            .frame(height: 52)
+            .padding(.horizontal, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func drawerDrag(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { value in
+                if drawerDragStart == nil {
+                    guard abs(value.translation.width) > abs(value.translation.height) * 1.2 else { return }
+                    drawerDragStart = drawerOffset
+                }
+                drawerOffset = min(max((drawerDragStart ?? 0) + value.translation.width, 0), width)
+            }
+            .onEnded { value in
+                guard let start = drawerDragStart else { return }
+                drawerDragStart = nil
+                let open = start + value.predictedEndTranslation.width > width * 0.5
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+                    drawerOffset = open ? width : 0
+                }
+            }
+    }
+
+    private func openDrawer(width: CGFloat) {
+        sessionSearchIsFocused = false
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+            drawerOffset = width
+        }
+    }
+
+    private func closeDrawer() {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+            drawerOffset = 0
+        }
+    }
+
+    private func selectDrawerItem(_ action: @escaping () -> Void) {
+        // Start the destination push immediately. Reset the workspace behind it
+        // without a closing animation so Back reveals the main page.
+        action()
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            drawerOffset = 0
+        }
+    }
+
+    @ViewBuilder
+    private var authenticationMenu: some View {
+        GatewayAuthenticationMenu(
+            gateway: store.gateway,
+            onScan: {
+                store.lastError = nil
+                showsQRScanner = true
+            },
+            onManualEntry: {
+                store.lastError = nil
+                showsManualPairing = true
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var settingsButton: some View {
+        headerButton(systemName: "gearshape.fill", accessibilityLabel: String(localized: "设置"), action: onSettings)
+    }
+
+    @ViewBuilder
+    private func headerButton(systemName: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
+        let label = headerButtonLabel(systemName: systemName)
+        if #available(iOS 26.0, *) {
+            Button(action: action) { label }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel(accessibilityLabel)
+        } else {
+            Button(action: action) { label }
+                .buttonStyle(.plain)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 0.8))
+                .accessibilityLabel(accessibilityLabel)
+        }
+    }
+
+    private func headerButtonLabel(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 17, weight: .semibold))
+            .frame(width: 40, height: 40)
+            .contentShape(Circle())
+    }
+
+    private var workspaceCard: some View {
+        Menu {
+            Button {
+                store.selectUngroupedWorkspace()
+            } label: {
+                Label {
+                    Text("未分组")
+                } icon: {
+                    Image(systemName: store.isUngroupedWorkspaceSelected ? "checkmark.circle.fill" : "tray")
+                }
+            }
+
+            if !store.workspaces.isEmpty { Divider() }
+
+            ForEach(store.workspaces) { workspace in
+                Button {
+                    store.selectWorkspace(workspace)
+                } label: {
+                    Label {
+                        Text(workspace.title)
+                    } icon: {
+                        Image(systemName: workspace.id == store.activeWorkspace?.id ? "checkmark.circle.fill" : "folder")
+                    }
+                }
+            }
+
+            Divider()
+
+            Button {
+                showsDirectoryBrowser = true
+            } label: {
+                Label("添加工作区", systemImage: "plus")
+            }
+        } label: {
+            workspaceCardLabel
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "选择工作区"))
+    }
+
+    private var workspaceCardLabel: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "folder").foregroundStyle(.blue).font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(workspaceDisplayTitle).font(.subheadline.weight(.semibold))
+                Text(workspaceDisplayPath).font(.caption).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
+            }
+            Spacer()
+            GatewayConnectionIndicator(gateway: store.gateway)
+            Image(systemName: "chevron.down").font(.caption).foregroundStyle(.white.opacity(0.55))
+        }
+        .padding(16)
+        .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 15))
+        .overlay(RoundedRectangle(cornerRadius: 15).stroke(.white.opacity(0.14)))
+        .contentShape(RoundedRectangle(cornerRadius: 15))
+    }
+
+    private var sessionsHeader: some View {
+        HStack {
+            Text("最近会话").font(.headline)
+            Spacer()
+            GatewayConnectionStatusText(gateway: store.gateway)
+        }
+    }
+
+    private func handleScannedCode(_ rawValue: String) {
+        do {
+            try store.pair(usingQRCode: rawValue)
+            showsQRScanner = false
+        } catch {
+            showsQRScanner = false
+            store.lastError = error.localizedDescription
+        }
+    }
+
+    private var sessionSearch: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.white.opacity(0.68))
+            TextField(
+                "",
+                text: $searchQuery,
+                prompt: Text("搜索会话内容")
+                    .foregroundStyle(.white.opacity(0.58))
+            )
+            .foregroundStyle(.white.opacity(0.92))
+            .tint(.white)
+            .textInputAutocapitalization(.never)
+            .focused($sessionSearchIsFocused)
+            .submitLabel(.search)
+            .onSubmit { sessionSearchIsFocused = false }
+        }
+        .padding(.horizontal, 12).frame(height: 42)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 13))
+        .overlay(RoundedRectangle(cornerRadius: 13).stroke(.white.opacity(0.1)))
+    }
+
+    private var emptySessions: some View {
+        Text("暂无已知会话。连接服务后创建第一个任务。")
+            .font(.subheadline).foregroundStyle(.white.opacity(0.5))
+            .frame(maxWidth: .infinity, alignment: .leading).padding(18)
+            .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 15))
+    }
+
+    private var displayedSessions: [SessionSummary] {
+        guard connectionIsReady else { return [] }
+        let workspaceSessions: [SessionSummary]
+        if store.isUngroupedWorkspaceSelected {
+            workspaceSessions = store.ungroupedSessions
+        } else if let workspace = store.activeWorkspace {
+            let ids = Set(workspace.sessionIds)
+            workspaceSessions = store.historySessions.filter { ids.contains($0.id) }
+        } else {
+            workspaceSessions = store.historySessions
+        }
+        guard !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return workspaceSessions.filter { !store.archivedSessionIds.contains($0.id) }
+        }
+        let ids = Set(store.searchResults.map(\.sessionId))
+        return workspaceSessions.filter { !store.archivedSessionIds.contains($0.id) && (ids.contains($0.id) || $0.title.localizedCaseInsensitiveContains(searchQuery)) }
+    }
+
+    private var workspaceDisplayTitle: String {
+        store.isUngroupedWorkspaceSelected ? String(localized: "未分组") : (store.activeWorkspace?.title ?? "DeepseekHarnessProject")
+    }
+
+    private var workspaceDisplayPath: String {
+        if store.isUngroupedWorkspaceSelected {
+            return String(localized: "workspace.ungrouped.count", defaultValue: "\(store.ungroupedSessions.count) 个未归属会话")
+        }
+        return store.activeWorkspace?.path ?? String(localized: "通过 Mobile Gateway 连接")
+    }
+
+    private var sessionsList: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(displayedSessions.prefix(12)) { session in
+                Button {
+                    sessionSearchIsFocused = false
+                    onOpenSession(session)
+                } label: {
+                    sessionRow(session)
+                }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            renamedTitle = session.title
+                            renamingSession = session
+                        } label: { Label("重命名", systemImage: "pencil") }
+                        Button(role: .destructive) {
+                            archivingSession = session
+                        } label: { Label("删除（归档）", systemImage: "archivebox") }
+                    }
+                    .id("workspace-session-\(session.id)")
+
+                Divider()
+                    .overlay(.white.opacity(0.1))
+                    .padding(.leading, 18)
+            }
+        }
+    }
+
+    private func sessionRow(_ session: SessionSummary) -> some View {
+        HStack(spacing: 11) {
+            Circle()
+                .fill(session.isRunning ? DSHColor.success : (session.hasUnread ? DSHColor.ocean : .white.opacity(0.35)))
+                .frame(width: 7, height: 7)
+                .shadow(color: session.isRunning ? DSHColor.success : .clear, radius: 5)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(session.title).lineLimit(1).font(.subheadline.weight(.medium))
+                Text(String(session.id.prefix(16))).font(.caption2.monospaced()).foregroundStyle(.white.opacity(0.42))
+            }
+            Spacer()
+            Text(session.isRunning ? String(localized: "运行中") : session.lastActivity.formatted(.relative(presentation: .named)))
+                .font(.caption).foregroundStyle(session.isRunning ? .blue : .white.opacity(0.48))
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var newSessionButton: some View {
+        if #available(iOS 26.0, *) {
+            Button(action: onNewSession) {
+                newSessionButtonLabel
+            }
+            .buttonStyle(.glass(.clear.tint(DSHColor.navy.opacity(0.22))))
+            .buttonBorderShape(.roundedRectangle(radius: 18))
+            .buttonSizing(.flexible)
+        } else {
+            Button(action: onNewSession) {
+                newSessionButtonLabel
+            }
+            .buttonStyle(.plain)
+            .glassSurface(radius: 18, dark: true, tint: .white.opacity(0.08))
+        }
+    }
+
+    private var newSessionButtonLabel: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "plus").font(.system(size: 15, weight: .semibold))
+                .frame(width: 28, height: 28)
+                .background(.white.opacity(0.1), in: Circle())
+            Text("新建会话").font(.headline)
+        }
+        .frame(maxWidth: .infinity).frame(height: 38)
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func colorInvertIfNeeded(_ inverted: Bool) -> some View {
+        if inverted { colorInvert() } else { self }
+    }
+}
+
+private struct DirectoryBrowserSheet: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var creatingPath: String?
+    @State private var showsCreateDirectoryPrompt = false
+    @State private var newDirectoryName = ""
+    @State private var highlightedDirectoryPath: String?
+
+    var body: some View {
+        NavigationStack {
+            ScrollViewReader { proxy in
+                List {
+                    Section {
+                        Button {
+                            if let parentPath { store.browseDirectories(path: parentPath) }
+                        } label: {
+                            directoryRow(icon: "arrowshape.turn.up.left", title: "..", subtitle: String(localized: "返回上一级"))
+                        }
+                        .disabled(parentPath == nil)
+
+                        ForEach(store.directoryEntries) { entry in
+                            Button {
+                                store.browseDirectories(path: entry.path)
+                            } label: {
+                                directoryRow(
+                                    icon: entry.hidden ? "folder.badge.questionmark" : "folder",
+                                    title: entry.name,
+                                    subtitle: entry.hidden ? String(localized: "隐藏目录") : nil
+                                )
+                            }
+                            .id(entry.path)
+                            .listRowBackground(
+                                ZStack {
+                                    Color(uiColor: .secondarySystemGroupedBackground)
+                                    if highlightedDirectoryPath == entry.path {
+                                        DSHColor.ocean.opacity(0.24)
+                                    }
+                                }
+                            )
+                        }
+                    } header: {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("当前目录")
+                            Text(store.directoryPath ?? String(localized: "正在读取…"))
+                                .font(.caption.monospaced())
+                                .textCase(nil)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .allowsHitTesting(!store.directoryIsLoading && !store.directoryCreationIsLoading)
+                .overlay {
+                    if store.directoryIsLoading && store.directoryEntries.isEmpty {
+                        ProgressView(String(localized: "正在读取远程目录…"))
+                    }
+                }
+                .safeAreaInset(edge: .bottom) {
+                    createWorkspaceBar
+                }
+                .navigationTitle("选择工作区目录")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            newDirectoryName = ""
+                            showsCreateDirectoryPrompt = true
+                        } label: {
+                            Label("新建文件夹", systemImage: "folder.badge.plus")
+                        }
+                        .disabled(store.directoryPath == nil || store.directoryIsLoading || store.directoryCreationIsLoading)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("取消") { dismiss() }
+                    }
+                }
+                .onChange(of: store.createdDirectoryPathToReveal) { _, _ in
+                    revealCreatedDirectory(using: proxy)
+                }
+                .onChange(of: store.directoryEntries) { _, _ in
+                    revealCreatedDirectory(using: proxy)
+                }
+                .task(id: highlightedDirectoryPath) {
+                    guard highlightedDirectoryPath != nil else { return }
+                    try? await Task.sleep(for: .seconds(1.6))
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        highlightedDirectoryPath = nil
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationBackground(.ultraThinMaterial)
+        .onAppear {
+            store.directoryEntries = []
+            store.browseDirectories()
+        }
+        .onChange(of: store.selectedWorkspaceId) { _, _ in
+            guard let creatingPath,
+                  store.activeWorkspace?.path == creatingPath else { return }
+            dismiss()
+        }
+        .alert("新建文件夹", isPresented: $showsCreateDirectoryPrompt) {
+            TextField("文件夹名称", text: $newDirectoryName)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("取消", role: .cancel) {}
+            Button("创建") { createDirectory() }
+                .disabled(normalizedDirectoryName.isEmpty)
+        } message: {
+            Text("将在当前目录中创建一个新的子文件夹。")
+        }
+    }
+
+    private var parentPath: String? {
+        guard store.directoryCrumbs.count > 1 else { return nil }
+        return store.directoryCrumbs.dropLast().last?.path
+    }
+
+    private var normalizedDirectoryName: String {
+        newDirectoryName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func createDirectory() {
+        guard let parentPath = store.directoryPath,
+              !normalizedDirectoryName.isEmpty else { return }
+        store.createDirectory(parentPath: parentPath, name: normalizedDirectoryName)
+    }
+
+    private func revealCreatedDirectory(using proxy: ScrollViewProxy) {
+        guard let path = store.createdDirectoryPathToReveal,
+              store.directoryEntries.contains(where: { $0.path == path }) else { return }
+        highlightedDirectoryPath = path
+        store.acknowledgeCreatedDirectoryReveal(path: path)
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                proxy.scrollTo(path, anchor: .center)
+            }
+        }
+    }
+
+    private func directoryRow(icon: String, title: String, subtitle: String?) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundStyle(DSHColor.ocean)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).foregroundStyle(Color(uiColor: .label))
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+    }
+
+    private var createWorkspaceBar: some View {
+        VStack(spacing: 8) {
+            if let path = store.directoryPath {
+                Text(path)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Button {
+                guard let path = store.directoryPath else { return }
+                creatingPath = path
+                store.createWorkspace(path: path)
+            } label: {
+                HStack(spacing: 9) {
+                    if store.workspaceCreationIsLoading {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "plus")
+                    }
+                    Text("在当前目录创建工作区")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .foregroundStyle(.white)
+                .background {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.black)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(
+                store.directoryPath == nil ||
+                store.workspaceCreationIsLoading ||
+                store.directoryCreationIsLoading
+            )
+            .allowsHitTesting(!store.directoryIsLoading)
+
+            if store.directoryCreationIsLoading {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("正在创建文件夹…")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 9)
+        .background(.ultraThinMaterial)
+    }
+}
+
+private struct GatewayConnectionIndicator: View {
+    @ObservedObject var gateway: GatewayClient
+
+    var body: some View {
+        ConnectionDot(state: gateway.state)
+    }
+}
+
+private struct GatewayAuthenticationMenu: View {
+    @ObservedObject var gateway: GatewayClient
+    let onScan: () -> Void
+    let onManualEntry: () -> Void
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            menu
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+        } else {
+            menu
+                .buttonStyle(.plain)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 0.8))
+        }
+    }
+
+    private var menu: some View {
+        Menu {
+            Button(action: onScan) {
+                Label("扫描二维码", systemImage: "qrcode.viewfinder")
+            }
+            Button(action: onManualEntry) {
+                Label("手动输入配对信息", systemImage: "keyboard")
+            }
+        } label: {
+            Image(systemName: "person.badge.key.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 40, height: 40)
+                .contentShape(Circle())
+        }
+        .accessibilityLabel(String(localized: "a11y.device-auth.state", defaultValue: "设备认证，\(gateway.state.label)"))
+    }
+
+}
+
+private struct GatewayConnectionStatusText: View {
+    @ObservedObject var gateway: GatewayClient
+
+    var body: some View {
+        Text(gateway.state.label)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(color)
+            .animation(.easeInOut(duration: 0.18), value: gateway.state)
+    }
+
+    private var color: Color {
+        switch gateway.state {
+        case .connected: DSHColor.success
+        case .connecting: DSHColor.amber
+        case .failed: .red.opacity(0.9)
+        case .disconnected: .white.opacity(0.5)
+        }
+    }
+}
+
+private struct ManualGatewayPairingSheet: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var gateway: GatewayClient
+
+    @State private var pairingText = ""
+    @State private var validationError: String?
+    @State private var didAttemptConnection = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("手动输入配对信息")
+                            .font(.title2.bold())
+                        Text("粘贴 Harness WebUI 提供的 Base64URL 配对字符串。长期设备 token 仍只会保存到 Keychain。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ZStack(alignment: .topLeading) {
+                        if pairingText.isEmpty {
+                            Text(Self.placeholder)
+                                .font(.system(.footnote, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 18)
+                                .allowsHitTesting(false)
+                        }
+                        TextEditor(text: $pairingText)
+                            .font(.system(.footnote, design: .monospaced))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .scrollContentBackground(.hidden)
+                            .padding(10)
+                    }
+                    .frame(minHeight: 210)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(.primary.opacity(0.1), lineWidth: 0.8)
+                    }
+
+                    connectionResult
+
+                    Button(action: primaryConnectionAction) {
+                        HStack(spacing: 9) {
+                            if isConnecting {
+                                ProgressView().tint(.white)
+                            } else {
+                                Image(systemName: "link")
+                            }
+                            Text(
+                                isConnecting
+                                    ? String(localized: "取消连接")
+                                    : gateway.state.isConnected
+                                        ? String(localized: "重新配对并连接")
+                                        : String(localized: "连接")
+                            )
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .foregroundStyle(.white)
+                        .background(DSHColor.ocean, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(pairingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isConnecting)
+                    .opacity(pairingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isConnecting ? 0.45 : 1)
+                }
+                .padding(22)
+            }
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle("设备认证")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationBackground(.regularMaterial)
+    }
+
+    @ViewBuilder
+    private var connectionResult: some View {
+        if let validationError {
+            resultCard(
+                title: String(localized: "配对信息无效"),
+                detail: validationError,
+                color: .red,
+                symbol: "exclamationmark.triangle.fill"
+            )
+        } else if didAttemptConnection {
+            switch gateway.state {
+            case .connecting:
+                resultCard(
+                    title: String(localized: "正在连接"),
+                    detail: String(localized: "pairing.submitting.detail", defaultValue: "正在提交一次性配对码并等待 Mobile Gateway 完成设备鉴权…"),
+                    color: DSHColor.amber,
+                    symbol: "arrow.triangle.2.circlepath"
+                )
+            case .connected:
+                resultCard(
+                    title: String(localized: "连接成功"),
+                    detail: String(localized: "设备鉴权已完成，长期 token 已安全保存到 Keychain。"),
+                    color: DSHColor.success,
+                    symbol: "checkmark.circle.fill"
+                )
+            case .failed(let reason):
+                resultCard(
+                    title: String(localized: "连接失败"),
+                    detail: reason,
+                    color: .red,
+                    symbol: "xmark.octagon.fill"
+                )
+            case .disconnected:
+                resultCard(
+                    title: String(localized: "未连接"),
+                    detail: String(localized: "请检查配对信息后重新连接。"),
+                    color: .secondary,
+                    symbol: "network.slash"
+                )
+            }
+        } else {
+            resultCard(
+                title: gateway.state.label,
+                detail: String(localized: "输入 Base64URL 配对字符串后点击连接，结果会显示在这里。"),
+                color: .secondary,
+                symbol: "person.badge.key.fill"
+            )
+        }
+    }
+
+    private func resultCard(title: String, detail: String, color: Color, symbol: String) -> some View {
+        HStack(alignment: .top, spacing: 13) {
+            Image(systemName: symbol)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(color)
+                .frame(width: 26)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title).font(.headline)
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(color.opacity(0.18), lineWidth: 0.8)
+        }
+    }
+
+    private func connect() {
+        validationError = nil
+        didAttemptConnection = true
+        do {
+            try store.pair(usingQRCode: pairingText, presentsFailureAlert: false)
+        } catch {
+            validationError = error.localizedDescription
+        }
+    }
+
+    private var isConnecting: Bool {
+        if case .connecting = gateway.state { return true }
+        return false
+    }
+
+    private func primaryConnectionAction() {
+        if isConnecting {
+            gateway.disconnect()
+        } else {
+            connect()
+        }
+    }
+
+    private static let placeholder = "eyJ2ZXJzaW9uIjoyLCJwdWJsaWNVcmwiOiJ3c3M6Ly9nYXRld2F5LmV4YW1wbGUuY29tL3dzL21vYmlsZSIsLi4ufQ"
+}
+
+private struct GatewayQRScannerView: View {
+    let onCode: (String) -> Void
+    let onCancel: () -> Void
+    let onFailure: (String) -> Void
+
+    var body: some View {
+        ZStack {
+            GatewayCameraPreview(onCode: onCode, onFailure: onFailure)
+                .ignoresSafeArea()
+
+            LinearGradient(
+                colors: [.black.opacity(0.58), .clear, .black.opacity(0.72)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+
+            VStack(spacing: 0) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("扫描设备配对码")
+                            .font(.title2.bold())
+                        Text("请扫描 Harness WebUI 生成的二维码")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.72))
+                    }
+                    Spacer()
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .accessibilityLabel(String(localized: "取消扫描"))
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 18)
+
+                Spacer()
+
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(.white, lineWidth: 3)
+                    .frame(width: 272, height: 272)
+                    .overlay(alignment: .bottom) {
+                        Text("将二维码完整放入框内")
+                            .font(.subheadline.weight(.medium))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .offset(y: 58)
+                    }
+
+                Spacer()
+            }
+            .foregroundStyle(.white)
+        }
+    }
+}
+
+private struct GatewayCameraPreview: UIViewControllerRepresentable {
+    let onCode: (String) -> Void
+    let onFailure: (String) -> Void
+
+    func makeUIViewController(context: Context) -> GatewayScannerController {
+        let controller = GatewayScannerController()
+        controller.onCode = onCode
+        controller.onFailure = onFailure
+        controller.start()
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: GatewayScannerController, context: Context) {}
+
+    static func dismantleUIViewController(_ uiViewController: GatewayScannerController, coordinator: Void) {
+        uiViewController.stop()
+    }
+}
+
+private final class GatewayScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+    var onCode: ((String) -> Void)?
+    var onFailure: ((String) -> Void)?
+
+    private let captureSession = AVCaptureSession()
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var didFinish = false
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.bounds
+    }
+
+    func start() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            configureAndRun()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if granted {
+                        self.configureAndRun()
+                    } else {
+                        self.finish(with: String(localized: "camera.denied", defaultValue: "未获得相机权限。请在系统设置中允许 DeepSeek Harness 使用相机后重试。"))
+                    }
+                }
+            }
+        case .denied, .restricted:
+            finish(with: String(localized: "camera.restricted", defaultValue: "相机权限不可用。请在系统设置中允许 DeepSeek Harness 使用相机后重试。"))
+        @unknown default:
+            finish(with: String(localized: "无法确定当前相机权限状态。"))
+        }
+    }
+
+    func stop() {
+        guard captureSession.isRunning else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [captureSession] in
+            captureSession.stopRunning()
+        }
+    }
+
+    private func configureAndRun() {
+        guard !captureSession.isRunning, captureSession.inputs.isEmpty else { return }
+        guard let camera = AVCaptureDevice.default(for: .video) else {
+            finish(with: String(localized: "此设备没有可用的相机。"))
+            return
+        }
+        do {
+            let input = try AVCaptureDeviceInput(device: camera)
+            guard captureSession.canAddInput(input) else {
+                finish(with: String(localized: "无法把相机接入扫码会话。"))
+                return
+            }
+            captureSession.addInput(input)
+
+            let output = AVCaptureMetadataOutput()
+            guard captureSession.canAddOutput(output) else {
+                finish(with: String(localized: "当前设备不支持二维码识别。"))
+                return
+            }
+            captureSession.addOutput(output)
+            output.setMetadataObjectsDelegate(self, queue: .main)
+            guard output.availableMetadataObjectTypes.contains(.qr) else {
+                finish(with: String(localized: "当前相机不支持二维码元数据识别。"))
+                return
+            }
+            output.metadataObjectTypes = [.qr]
+
+            let preview = AVCaptureVideoPreviewLayer(session: captureSession)
+            preview.videoGravity = .resizeAspectFill
+            preview.frame = view.bounds
+            view.layer.insertSublayer(preview, at: 0)
+            previewLayer = preview
+
+            DispatchQueue.global(qos: .userInitiated).async { [captureSession] in
+                captureSession.startRunning()
+            }
+        } catch {
+            finish(with: String(localized: "camera.start.failed", defaultValue: "相机启动失败：\(error.localizedDescription)"))
+        }
+    }
+
+    func metadataOutput(
+        _ output: AVCaptureMetadataOutput,
+        didOutput metadataObjects: [AVMetadataObject],
+        from connection: AVCaptureConnection
+    ) {
+        guard !didFinish,
+              let code = metadataObjects.compactMap({ ($0 as? AVMetadataMachineReadableCodeObject)?.stringValue }).first else { return }
+        didFinish = true
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        stop()
+        onCode?(code)
+    }
+
+    private func finish(with message: String) {
+        guard !didFinish else { return }
+        didFinish = true
+        stop()
+        onFailure?(message)
+    }
+}

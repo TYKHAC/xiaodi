@@ -1,0 +1,260 @@
+package com.clarklevis.dsh.shared
+
+import com.clarklevis.dsh.shared.facade.SharedSessionListSnapshot
+import com.clarklevis.dsh.shared.facade.SharedSessionListStore
+import com.clarklevis.dsh.shared.facade.SharedSessionSummarySnapshot
+import com.clarklevis.dsh.shared.facade.SharedMviEvent
+import com.clarklevis.dsh.shared.facade.SharedMviEventObserver
+import com.clarklevis.dsh.shared.protocol.wireJson
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class SharedSessionListStoreTest {
+    @Test
+    fun blankSessionsStayHiddenAcrossMetadataChangesAndPersistenceUntilFirstMessage() {
+        val store = makeStore()
+        store.addKnownSession("draft", 100.0)
+        store.selectSession("draft")
+        store.receiveEvent(
+            """{"sessionId":"draft","seq":1,"time":101,"event":{"type":"session/title","text":"测试 2"}}""",
+            101.0
+        )
+        store.receiveRemoteSessions("""[{"sessionId":"draft","updatedAt":102,"running":false,"blank":true,"agentPreset":"minimal","cwd":"/test"}]""")
+        val blank = decode(store.snapshot().snapshotJson)
+        assertEquals(false, blank.sessions.single().hasConversation)
+        assertEquals("draft", blank.selectedSessionId)
+        val restored = makeStore()
+        restored.restore(wireJson.encodeToString(blank))
+        assertEquals(false, decode(restored.snapshot().snapshotJson).sessions.single().hasConversation)
+        restored.messageSent("draft", "minimal", 103.0)
+        assertEquals(true, decode(restored.snapshot().snapshotJson).sessions.single().hasConversation)
+    }
+
+    @Test
+    fun hostFullListReplacesCachedRowsAndItsBlankFlagIsAuthoritative() {
+        val store = makeStore()
+        store.restore(wireJson.encodeToString(SharedSessionListSnapshot(sessions = listOf(
+            SharedSessionSummarySnapshot("gone", "本地旧记录", 99.0, false, false),
+            SharedSessionSummarySnapshot("blank", "旧版缓存空会话", 100.0, false, false)
+        ))))
+        store.receiveRemoteSessions("""[
+            {"sessionId":"blank","updatedAt":100,"running":false,"blank":true},
+            {"sessionId":"real","updatedAt":90,"running":false,"blank":false}
+        ]""")
+        var snapshot = decode(store.snapshot().snapshotJson)
+        assertEquals(listOf("real"), snapshot.sessions.filter { it.hasConversation != false }.map { it.id })
+        assertFalse(snapshot.sessions.any { it.id == "gone" })
+        store.messageSent("blank", null, 101.0)
+        store.receiveRemoteSessions("""[{"sessionId":"blank","updatedAt":102,"running":false,"blank":true}]""")
+        snapshot = decode(store.snapshot().snapshotJson)
+        assertEquals(false, snapshot.sessions.single().hasConversation)
+        store.receiveRemoteSessions("[]")
+        assertTrue(decode(store.snapshot().snapshotJson).sessions.isEmpty())
+    }
+
+    @Test
+    fun remoteTurnMakesBlankSessionVisibleAndCompletionDoesNotHideIt() {
+        val store = makeStore()
+        store.addKnownSession("remote", 100.0)
+        for ((index, type) in listOf("user/message", "turn/start", "turn/end").withIndex()) {
+            store.receiveEvent(
+                """{"sessionId":"remote","seq":${index + 1},"time":${101 + index},"event":{"type":"$type"}}""",
+                101.0 + index
+            )
+            assertEquals(true, decode(store.snapshot().snapshotJson).sessions.single().hasConversation)
+        }
+    }
+
+    @Test
+    fun mobileHistoryDistinguishesEmptyMetadataFromConversationContent() {
+        val store = com.clarklevis.dsh.shared.facade.SharedMobileStore()
+        store.acceptFrame("""{"kind":"history","sessionId":"draft","events":[]}""")
+        assertFalse(store.snapshot().sessions.single().isVisibleInHistory)
+        val snapshot = store.acceptFrame("""{"kind":"history","sessionId":"draft","events":[{"type":"user/message","seq":1,"time":1,"data":{"content":[{"type":"text","text":"你好"}]}}]}""")
+        assertTrue(snapshot.sessions.single().isVisibleInHistory)
+    }
+
+    @Test
+    fun titleNotificationsReplaceExistingNamesAndIgnoreDuplicateOrOlderEvents() {
+        val store = makeStore()
+        store.restore(wireJson.encodeToString(SharedSessionListSnapshot(
+            sessions = listOf(SharedSessionSummarySnapshot("s1", "原名称", 100.0, true, false)),
+            selectedSessionId = "s1"
+        )))
+        fun title(seq: Int, value: String) = store.receiveEvent(
+            """{"sessionId":"s1","seq":$seq,"time":200,"event":{"type":"session/title","text":"$value"}}""",
+            200.0
+        )
+        val updated = decode(title(129, "新名称").snapshotJson).sessions.single()
+        assertEquals("新名称", updated.title)
+        assertEquals(100.0, updated.lastActivityEpochSeconds)
+        assertTrue(updated.isRunning)
+        assertFalse(updated.hasUnread)
+        assertNull(title(129, "重复通知").snapshotJson)
+        assertNull(title(128, "旧名称").snapshotJson)
+        assertEquals("再次改名", decode(title(130, "再次改名").snapshotJson).sessions.single().title)
+    }
+
+    @Test
+    fun mobileMetadataFramesApplyOutsideSelectedSessionAndReplaceArchiveSet() {
+        val store = com.clarklevis.dsh.shared.facade.SharedMobileStore()
+        store.acceptFrame("""{"kind":"sessions","items":[{"sessionId":"s1","updatedAt":100,"running":false,"blank":false},{"sessionId":"s2","updatedAt":200,"running":false,"blank":false}]}""")
+        store.selectSession("s2")
+        var snapshot = store.acceptFrame("""{"kind":"session-title-changed","sessionId":"s1","title":"远端改名","seq":129}""")
+        assertEquals("远端改名", snapshot.sessions.first { it.id == "s1" }.title)
+        snapshot = store.acceptFrame("""{"kind":"session-renamed","sessionId":"s1","title":"旧回执","seq":128}""")
+        assertEquals("远端改名", snapshot.sessions.first { it.id == "s1" }.title)
+        snapshot = store.acceptFrame("""{"kind":"session-archived","archivedSessionIds":["s1"]}""")
+        assertEquals(listOf("s2"), snapshot.sessions.map { it.id })
+        snapshot = store.acceptFrame("""{"kind":"session-archives","archivedSessionIds":["s2"]}""")
+        assertEquals(listOf("s1"), snapshot.sessions.map { it.id })
+        snapshot = store.acceptFrame("""{"kind":"session-archives","archivedSessionIds":[]}""")
+        assertEquals(2, snapshot.sessions.size)
+    }
+
+    private fun makeStore() = SharedSessionListStore(
+        newSessionTitle = "新建会话",
+        remoteSessionPrefix = "远端会话 ",
+        blankSessionPrefix = "空白会话 "
+    )
+
+    @Test
+    fun subscriptionPushesOnlyChangedSessionListSnapshots() {
+        val store = makeStore()
+        val events = mutableListOf<SharedMviEvent>()
+        store.subscribe(SharedMviEventObserver(events::add))
+
+        store.addKnownSession("push-session", 100.0)
+        store.addKnownSession("push-session", 100.0)
+
+        assertEquals(listOf("snapshot", "transition"), events.map { it.kind })
+        assertEquals(listOf(0L, 1L), events.map { it.sequence })
+        assertEquals(
+            "push-session",
+            decode(events.last().statePayloadJson).sessions.single().id
+        )
+        assertEquals("[]", events.last().effectsJson)
+    }
+
+    @Test
+    fun restoredPersistenceAndAllSessionIntentsUseOneKmpState() {
+        val store = makeStore()
+        val restored = SharedSessionListSnapshot(
+            sessions = listOf(
+                SharedSessionSummarySnapshot(
+                    id = "existing",
+                    title = "旧标题",
+                    lastActivityEpochSeconds = 10.0,
+                    isRunning = false,
+                    hasUnread = true,
+                    agentPreset = "keep"
+                )
+            ),
+            selectedSessionId = "selected"
+        )
+        assertTrue(store.restore(wireJson.encodeToString(restored)).isSuccess)
+
+        assertTrue(store.setArchivedSessionIds(wireJson.encodeToString(listOf("archived"))).isSuccess)
+        val remote = """[
+            {"sessionId":"existing","updatedAt":2000,"running":true,"blank":false,"cwd":"/tmp/existing"},
+            {"sessionId":"new","updatedAt":3000,"running":false,"blank":false,"cwd":"/tmp/new","agentPreset":"standard"},
+            {"sessionId":"archived","updatedAt":4000,"running":false,"blank":false,"cwd":"/tmp/archived"}
+        ]"""
+        var snapshot = decode(store.receiveRemoteSessions(remote).snapshotJson)
+        assertEquals(listOf("new", "existing"), snapshot.sessions.map { it.id })
+        assertEquals("new", snapshot.sessions.first().title)
+        assertEquals("keep", snapshot.sessions.last().agentPreset)
+        assertTrue(snapshot.sessions.last().isRunning)
+        assertTrue(snapshot.sessions.last().hasUnread)
+
+        val event = """{
+            "sessionId":"new","seq":1,"time":3001,
+            "event":{"type":"turn/start"}
+        }"""
+        snapshot = decode(store.receiveEvent(event, insertedAtEpochSeconds = 9_999.0).snapshotJson)
+        assertEquals("new", snapshot.sessions.first().id)
+        assertTrue(snapshot.sessions.first().isRunning)
+        assertTrue(snapshot.sessions.first().hasUnread)
+
+        snapshot = decode(store.selectSession("new").snapshotJson)
+        assertEquals("new", snapshot.selectedSessionId)
+        snapshot = decode(store.markRead("new").snapshotJson)
+        assertFalse(snapshot.sessions.first().hasUnread)
+
+        snapshot = decode(store.messageSent("created", "review", 8_000.0).snapshotJson)
+        assertEquals(8_000.0, snapshot.sessions.first { it.id == "created" }.lastActivityEpochSeconds)
+        assertEquals("review", snapshot.sessions.first { it.id == "created" }.agentPreset)
+        snapshot = decode(store.addKnownSession("known", 8_001.0).snapshotJson)
+        assertEquals(8_001.0, snapshot.sessions.first { it.id == "known" }.lastActivityEpochSeconds)
+    }
+
+    @Test
+    fun malformedPlatformPayloadReturnsStructuredErrorAndKeepsState() {
+        val store = makeStore()
+        val initial = SharedSessionListSnapshot(
+            sessions = listOf(
+                SharedSessionSummarySnapshot("s1", "稳定状态", 10.0, false, false)
+            )
+        )
+        assertTrue(store.restore(wireJson.encodeToString(initial)).isSuccess)
+
+        val failure = store.receiveRemoteSessions("not-json")
+        assertFalse(failure.isSuccess)
+        assertEquals("session-list-remote-sessions-failed", failure.errorCode)
+        assertNotNull(failure.errorMessage)
+        assertNull(failure.snapshotJson)
+
+        val unchanged = decode(store.snapshot().snapshotJson)
+        assertEquals(initial, unchanged)
+    }
+
+    @Test
+    fun unchangedStreamingEventDoesNotCopyWholeSnapshotAcrossBridge() {
+        val store = makeStore()
+        val initial = SharedSessionListSnapshot(
+            sessions = listOf(
+                SharedSessionSummarySnapshot("s1", "已有标题", 10.0, true, false)
+            ),
+            selectedSessionId = "s1"
+        )
+        assertTrue(store.restore(wireJson.encodeToString(initial)).isSuccess)
+
+        val unchanged = store.receiveEvent(
+            """{"sessionId":"s1","seq":2,"time":11,"event":{"type":"assistant/chunk","text":"delta"}}""",
+            insertedAtEpochSeconds = 12.0
+        )
+
+        assertTrue(unchanged.isSuccess)
+        assertNull(unchanged.snapshotJson)
+        assertEquals(initial, decode(store.snapshot().snapshotJson))
+    }
+
+    @Test
+    fun snapshotCatchesSerializationFailureAndFailedMutationDoesNotPoisonState() {
+        val store = makeStore()
+        val initial = SharedSessionListSnapshot(
+            sessions = listOf(
+                SharedSessionSummarySnapshot("stable", "稳定状态", 10.0, false, false)
+            )
+        )
+        assertTrue(store.restore(wireJson.encodeToString(initial)).isSuccess)
+
+        val failure = store.addKnownSession("invalid", Double.NaN)
+        assertFalse(failure.isSuccess)
+        assertEquals("session-list-known-session-failed", failure.errorCode)
+        assertNull(failure.snapshotJson)
+
+        val snapshot = store.snapshot()
+        assertTrue(snapshot.isSuccess)
+        assertEquals(initial, decode(snapshot.snapshotJson))
+    }
+
+    private fun decode(json: String?): SharedSessionListSnapshot =
+        wireJson.decodeFromString(requireNotNull(json))
+}

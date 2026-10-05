@@ -1,0 +1,14 @@
+# 保证 checkout 到 macOS runner 时是 LF 换行。
+# 否则 gradlew 等 shell 脚本会被转成 CRLF，bash 报 "\r: command not found"。
+* text=auto eol=lf
+
+# 二进制，禁止任何换行/文本转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.framework binary
+*.a binary

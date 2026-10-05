@@ -1,0 +1,104 @@
+name: 构建 小弟（iOS App）
+
+# 用户没有 Mac ⇒ 用 GitHub Actions 的免费 macOS runner 编译。
+# 公开仓库的 Actions 完全免费（私有仓库 macOS 有 10 倍计费，公开没有）。
+on:
+  push:
+    tags: [ 'v*' ]
+    branches: [ main ]
+  workflow_dispatch:   # 手动触发：在网页上点一下 Run
+
+jobs:
+  build:
+    # macos-15 是 Apple Silicon，dsh-mobile 的 KMP framework 需要
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 选择 Xcode
+        # 不要写死一个版本路径后不管它存不存在 —— runner 镜像是滚动的，
+        # 版本随时可能被移除。优先用指定的 16.4，不在就退回默认。
+        run: |
+          if [ -d /Applications/Xcode_16.4.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.4.app
+          fi
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i "iphoneos"
+
+      - name: 缓存 Gradle（KMP 要编 framework，缓存能省 10+ 分钟）
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/Library/Caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: 装 Java 17（KMP framework 构建需要）
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 生成工程所需的依赖
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --version
+
+      # 注意：Xcode 工程里已有一个「Build KMP Framework」构建阶段
+      #（PBXShellScriptBuildPhase，project.pbxproj L481），它自己会按
+      # $CONFIGURATION / $PLATFORM_NAME / $ARCHS 决定 Debug|Release 与
+      # IosArm64|IosSimulatorArm64，并调用
+      #   gradlew :shared:link${KMP_BUILD_TYPE}Framework${KMP_TARGET}
+      # 所以这里**不要**再手动 link 一次 —— 会先编 Debug 再被 Release 覆盖，
+      # 白费十几分钟，KMP 模块的 .a 还会出现两套混用的风险。
+      - name: 编译 App（不出签名，产出未签名 .app）
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project DeepSeekHarnessMobile.xcodeproj \
+            -scheme DeepSeekHarnessMobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            build
+
+      - name: 打包成可侧载的 .ipa
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          # 没找到 .app 必须显式失败：否则 zip 会打出一个空壳 ipa，
+          # 到了手机上才炸，白等一轮下载。
+          if [ -z "$APP" ]; then
+            echo "::error::Release-iphoneos 下没有 .app，编译其实没成功或产物路径变了"
+            ls -la build/Build/Products/ || true
+            exit 1
+          fi
+          echo "找到 app: $APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          # 不带 _CodeSignature 目录，否则 AltStore 侧载会因签名不匹配失败
+          rm -rf "Payload/$(basename "$APP")/_CodeSignature"
+          zip -qry xiaodi-unsigned.ipa Payload
+          rm -rf Payload
+          ls -la xiaodi-unsigned.ipa
+
+      - name: 上传 ipa（可下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaodi-unsigned-ipa
+          path: xiaodi-unsigned.ipa
+          retention-days: 30
+
+      - name: 上传为 Release（打 tag 时）
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: xiaodi-unsigned.ipa
