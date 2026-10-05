@@ -48,6 +48,29 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --version
 
+      - name: Dump 工程结构（排查用）
+        run: |
+          {
+            echo "===== xcodebuild -version ====="
+            xcodebuild -version
+            echo "===== SDKs ====="
+            xcodebuild -showsdks
+            echo "===== list -project schemes ====="
+            xcodebuild -list -project DeepSeekHarnessMobile.xcodeproj
+            echo "===== targets ====="
+            xcodebuild -list -project DeepSeekHarnessMobile.xcodeproj -json || true
+          } 2>&1 | tee project-info.log || true
+          cat project-info.log
+
+      - name: 上传工程结构
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-info
+          path: project-info.log
+          retention-days: 14
+          if-no-files-found: ignore
+
       # 注意：Xcode 工程里已有一个「Build KMP Framework」构建阶段
       #（PBXShellScriptBuildPhase，project.pbxproj L481），它自己会按
       # $CONFIGURATION / $PLATFORM_NAME / $ARCHS 决定 Debug|Release 与
@@ -56,6 +79,8 @@ jobs:
       # 所以这里**不要**再手动 link 一次 —— 会先编 Debug 再被 Release 覆盖，
       # 白费十几分钟，KMP 模块的 .a 还会出现两套混用的风险。
       - name: 编译 App（不出签名，产出未签名 .app）
+        # tee + pipefail：完整日志落盘成 xcodebuild.log，
+        # 失败时通过 upload-artifact 传回来看（控制台只留摘要，定位不到具体行）。
         run: |
           set -o pipefail
           xcodebuild \
@@ -68,7 +93,16 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_ENTITLEMENTS="" \
-            build
+            build 2>&1 | tee xcodebuild.log
+
+      - name: 上传编译日志（失败时用来定位）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: 打包成可侧载的 .ipa
         run: |
