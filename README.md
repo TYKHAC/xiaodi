@@ -4,6 +4,14 @@
 
 # DeepSeek Harness Mobile
 
+> ## 📱 想装到 iPhone？先看这份
+>
+> **→ [装到手机的操作手册.md](装到手机的操作手册.md)** —— 完整步骤：拿 ipa、AltStore 装机、
+> 7 天续签的真相、连电脑上的 DSH、排错表、以及编译踩过的所有坑。
+>
+> **换手机也不用怕**：这个仓库自带 GitHub Actions 编译流水线，不需要 Mac，
+> 推代码就自动出 ipa。手册里的方法照抄一遍即可。
+
 **使用 Kotlin Multiplatform 共享核心逻辑，为 Android 与 iOS 提供原生移动端体验。**
 
 通过 Mobile Gateway 在手机上访问 DeepSeek Harness 的工作区、会话、实时对话、Agent 轨迹与文件。
