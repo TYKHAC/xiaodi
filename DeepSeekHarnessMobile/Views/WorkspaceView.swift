@@ -141,9 +141,9 @@ struct WorkspaceView: View {
                     }
                     Spacer(minLength: 44)
                     VStack(alignment: .leading, spacing: 7) {
-                        Text("探索未至之境")
+                        Text("朱小姐")
                             .font(.system(size: 32, weight: .bold))
-                        Text("DeepSeek Harness 预览版")
+                        Text("你的专属代理")
                             .font(.subheadline).foregroundStyle(.white.opacity(0.65))
                     }
                     .id("workspace-hero")
@@ -171,29 +171,63 @@ struct WorkspaceView: View {
     }
 
     private func header(openDrawer: @escaping () -> Void) -> some View {
-        HStack {
-            Button(action: openDrawer) { HarnessMark() }
-                .buttonStyle(.plain)
-                .accessibilityLabel("打开侧边栏")
-            Spacer()
-            authenticationMenu
-            settingsButton
-                // Match the outer glass circle to the workspace cards' trailing edge.
-                .padding(.trailing, -4)
+        // 朱小姐：顶部不放 ☰ 和 ⚙（都进左划栏了），只留居中的名字 + 右上角静音键。
+        // 左划栏靠左边缘右滑打开（drawerDrag 已覆盖）。
+        HStack(spacing: 0) {
+            Color.clear.frame(width: 34, height: 34)
+            Spacer(minLength: 0)
+            VStack(spacing: 1) {
+                Text("朱小姐")
+                    .font(.system(size: 17, weight: .semibold))
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(store.gateway.state.isConnected ? Color.green : Color.white.opacity(0.4))
+                        .frame(width: 6, height: 6)
+                    Text(store.gateway.state.isConnected
+                         ? String(localized: "已连接")
+                         : store.gateway.state.label)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+            Spacer(minLength: 0)
+            muteButton
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// 朱小姐：静音键 —— 一键开关「朗读回复」（对应 AppPreferences.speakRepliesEnabled）
+    private var muteButton: some View {
+        Button {
+            store.speakRepliesEnabled.toggle()
+        } label: {
+            Image(systemName: store.speakRepliesEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(Color.white.opacity(0.12)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(store.speakRepliesEnabled
+                            ? String(localized: "关闭朗读回复")
+                            : String(localized: "开启朗读回复"))
     }
 
     private func drawerContent(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Image("DshBrandWordmark")
-                .resizable()
-                .scaledToFit()
-                .colorInvertIfNeeded(colorScheme == .dark)
-                .frame(width: min(width - 48, 216), alignment: .leading)
-                .accessibilityLabel("DeepSeek Harness")
-                .padding(.leading, 12)
-                .padding(.bottom, 16)
+            // 朱小姐：左划栏顶部换成名字，不再挂 DeepSeek Harness 的 wordmark
+            HStack(spacing: 8) {
+                Image(systemName: "water.waves")
+                    .font(.system(size: 20, weight: .semibold))
+                Text("朱小姐").font(.system(size: 20, weight: .bold))
+            }
+            .padding(.leading, 12)
+            .padding(.bottom, 16)
+
+            drawerItem("新会话", icon: {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 20, weight: .medium))
+                    .frame(width: 24)
+            }, action: { selectDrawerItem(onNewSession) })
 
             drawerItem("插件", icon: {
                 Image("DshPluginPinwheel")
@@ -209,6 +243,13 @@ struct WorkspaceView: View {
                     .frame(width: 24)
             }, action: { selectDrawerItem(onScheduledTasks) })
             Spacer(minLength: 0)
+
+            // 朱小姐：⚙ 从顶栏搬进左划栏
+            drawerItem("设置", icon: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 20, weight: .medium))
+                    .frame(width: 24)
+            }, action: { selectDrawerItem(onSettings) })
         }
         .padding(.horizontal, 18)
         .padding(.top, topInset + 18)

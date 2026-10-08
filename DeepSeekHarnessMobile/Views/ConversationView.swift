@@ -213,6 +213,11 @@ struct ConversationView: View {
     @State private var activeView = 0
     @State private var draft = ""
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    // ── 朱小姐：底部待命栏 ──
+    // 键盘收起时显示「相机 ｜ 珍珠语音 ｜ 键盘 ｜ 更多」四个圆键，
+    // 所以相册选择器和相机都要能被代码唤起（不能只靠 PhotosPicker 那个按钮）。
+    @State private var showsPhotoPicker = false
+    @State private var showsCameraCapture = false
     @State private var pendingImages: [GatewayOutgoingImage] = []
     @State private var isImportingImages = false
     @State private var showsContextUsage = false
@@ -734,8 +739,15 @@ struct ConversationView: View {
             VoiceStateBadge(voice: store.voice)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 4)
-            composerCard
-                .zIndex(1)
+            // 朱小姐：键盘收起＝四个圆键；一旦聚焦或有草稿/有图，就回到输入框
+            if showsStandbyBar {
+                standbyBar
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
+                    .zIndex(1)
+            } else {
+                composerCard
+                    .zIndex(1)
+            }
         }
         .animation(queueLayoutAnimation, value: store.selectedQueueItems.isEmpty)
         .animation(queueLayoutAnimation, value: queueExpanded)
@@ -743,6 +755,138 @@ struct ConversationView: View {
 
     private var queueLayoutAnimation: Animation {
         reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.25)
+    }
+
+    // MARK: - 朱小姐：底部待命栏（相机 ｜ 珍珠语音 ｜ 键盘 ｜ 更多）
+
+    /// 空闲且没有草稿时用四个圆键；一旦聚焦、有文字或有待发图片，就让位给输入框。
+    private var showsStandbyBar: Bool {
+        !composerIsFocused && draft.isEmpty && pendingImages.isEmpty
+    }
+
+    private var standbyBar: some View {
+        HStack(spacing: 0) {
+            standbyKey(systemName: "camera", label: String(localized: "相机（长按打开相册）")) {
+                openCamera()
+            } onLongPress: {
+                openPhotoLibrary()
+            }
+
+            Spacer(minLength: 0)
+
+            // 珍珠圆球：按住说话，和 Siri 那套交互一样
+            SiriMicButton(voice: store.voice, diameter: 54, reduceMotion: reduceMotion)
+
+            Spacer(minLength: 0)
+
+            standbyKey(systemName: "keyboard", label: String(localized: "键盘")) {
+                composerIsFocused = true
+            }
+
+            Spacer(minLength: 0)
+
+            Menu {
+                Button {
+                    openPhotoLibrary()
+                } label: {
+                    Label(String(localized: "从相册选择"), systemImage: "photo.on.rectangle.angled")
+                }
+                Button {
+                    openCamera()
+                } label: {
+                    Label(String(localized: "拍照"), systemImage: "camera")
+                }
+                Button {
+                    pasteFromClipboard()
+                } label: {
+                    Label(String(localized: "粘贴剪贴板"), systemImage: "doc.on.clipboard")
+                }
+            } label: {
+                standbyKeyBody(systemName: "plus")
+            }
+            .accessibilityLabel(String(localized: "更多"))
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 8)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color(uiColor: .secondarySystemBackground))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, 12)
+        .padding(.bottom, 4)
+    }
+
+    private func standbyKey(
+        systemName: String,
+        label: String,
+        action: @escaping () -> Void,
+        onLongPress: (() -> Void)? = nil
+    ) -> some View {
+        standbyKeyBody(systemName: systemName)
+            .contentShape(Circle())
+            .onTapGesture(perform: action)
+            .onLongPressGesture(minimumDuration: 0.45) { onLongPress?() }
+            .accessibilityLabel(label)
+    }
+
+    private func standbyKeyBody(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 19, weight: .medium))
+            .foregroundStyle(.primary)
+            .frame(width: 44, height: 44)
+            .background(Circle().fill(Color(uiColor: .tertiarySystemFill)))
+    }
+
+    private func openCamera() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            store.lastError = String(localized: "这台设备没有可用的相机。")
+            return
+        }
+        showsCameraCapture = true
+    }
+
+    private func openPhotoLibrary() {
+        guard store.supportsImages else {
+            store.lastError = String(localized: "当前网关不支持图片")
+            return
+        }
+        showsPhotoPicker = true
+    }
+
+    private func pasteFromClipboard() {
+        guard let text = UIPasteboard.general.string, !text.isEmpty else {
+            store.lastError = String(localized: "剪贴板里没有文字。")
+            return
+        }
+        draft += text
+        composerIsFocused = true
+    }
+
+    /// 相机拍到的照片走和相册同一条处理链，不另开一套。
+    private func appendCameraImage(_ image: UIImage) {
+        guard let data = image.jpegData(compressionQuality: 0.9),
+              let mediaType = Self.imageMediaType(for: data) else { return }
+        Task { @MainActor in
+            isImportingImages = true
+            defer { isImportingImages = false }
+            do {
+                let prepared = try await Task.detached(priority: .userInitiated) {
+                    try GatewayImagePreprocessor.prepare(data: data, mediaType: mediaType)
+                }.value
+                let existingBytes = pendingImages.reduce(0) { $0 + $1.data.count }
+                guard existingBytes + prepared.data.count <= 100 * 1024 * 1024 else {
+                    store.lastError = String(localized: "一条消息中的图片总大小不能超过 100 MiB。")
+                    return
+                }
+                pendingImages.append(GatewayOutgoingImage(mediaType: prepared.mediaType, data: prepared.data))
+            } catch {
+                store.lastError = String(localized: "image.process.failed", defaultValue: "处理所选图片失败：\(error.localizedDescription)")
+            }
+        }
     }
 
     private var composerCard: some View {
@@ -909,6 +1053,19 @@ struct ConversationView: View {
         .onChange(of: selectedPhotoItems) { _, items in
             guard !items.isEmpty else { return }
             Task { await importPhotos(items) }
+        }
+        // 朱小姐：待命栏的相机/更多都能唤起相册与相机
+        .photosPicker(
+            isPresented: $showsPhotoPicker,
+            selection: $selectedPhotoItems,
+            maxSelectionCount: max(1, 20 - pendingImages.count),
+            matching: .images
+        )
+        .fullScreenCover(isPresented: $showsCameraCapture) {
+            CameraCapturePicker { image in
+                appendCameraImage(image)
+            }
+            .ignoresSafeArea()
         }
         .onChange(of: draft) { _, value in
             store.updateSlashCommandInput(value)
@@ -3938,5 +4095,44 @@ enum JSONSyntaxHighlighter {
         var result = AttributedString(value)
         result.foregroundColor = color
         return result
+    }
+}
+
+// MARK: - 朱小姐：相机拍照（点相机键用）
+
+/// 系统相机，只做一件事：拍一张、回调 UIImage。
+/// 特意不单独建文件 —— pbxproj 是显式清单，新增文件要登记四处，能不加就不加。
+struct CameraCapturePicker: UIViewControllerRepresentable {
+    var onCapture: (UIImage) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        private let parent: CameraCapturePicker
+
+        init(_ parent: CameraCapturePicker) { self.parent = parent }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.onCapture(image)
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
     }
 }

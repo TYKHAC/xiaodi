@@ -26,6 +26,7 @@ struct SiriMicButton: View {
     private var isRecording: Bool { voice.state == .listening }
     private var isTranscribing: Bool { voice.state == .transcribing }
     private var isSpeaking: Bool { voice.state == .speaking }
+    private var isIdle: Bool { !isRecording && !isTranscribing && !isSpeaking }
 
     /// Siri 的多色渐变（青→蓝→紫），静止态只露一点点，按下才全开
     private var siriGradient: LinearGradient {
@@ -52,11 +53,18 @@ struct SiriMicButton: View {
                     ring(scale: 1.35, opacity: 0.22, delay: 0.35)
                 }
 
-                // 底圆
-                Circle()
-                    .fill(background)
-                    .frame(width: diameter, height: diameter)
-                    .shadow(color: shadowColor, radius: isRecording ? 12 : 4, y: 2)
+                // 底圆：闲着＝珍珠圆球，按住/播报时才切成渐变色
+                Group {
+                    if isIdle {
+                        PearlOrbView()
+                    } else {
+                        Circle().fill(background)
+                    }
+                }
+                .frame(width: diameter, height: diameter)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1))
+                .shadow(color: shadowColor, radius: isRecording ? 14 : 6, y: 3)
 
                 // 图标
                 Image(systemName: symbolName)
@@ -109,7 +117,8 @@ struct SiriMicButton: View {
 
     private var foreground: Color {
         if isRecording || isTranscribing || isSpeaking { return .white }
-        return .primary
+        // 珍珠底是浅色，图标固定用石板灰，别跟着深色模式变白（会看不见）
+        return Color(red: 0.37, green: 0.44, blue: 0.59)
     }
 
     private var background: AnyShapeStyle {
@@ -190,6 +199,47 @@ struct VoiceStateBadge: View {
             .padding(.vertical, 4)
             .background(.thinMaterial, in: Capsule())
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        }
+    }
+}
+
+// MARK: - 珍珠圆球（朱小姐的语音键质感）
+
+/// 虹彩珍珠质感：四团柔光（粉/蓝/薄荷/紫）+ 一条高光，
+/// 全部用渐变叠出来，不依赖图片资源，所以不用往 Assets 里加东西。
+struct PearlOrbView: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.99, green: 0.95, blue: 0.98),
+                    Color(red: 0.92, green: 0.95, blue: 1.00),
+                    Color(red: 0.91, green: 0.99, blue: 0.97),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            RadialGradient(
+                colors: [Color.white, Color(red: 1.0, green: 0.88, blue: 0.95).opacity(0.85), .clear],
+                center: UnitPoint(x: 0.28, y: 0.20), startRadius: 0, endRadius: 95
+            )
+            RadialGradient(
+                colors: [Color(red: 0.87, green: 0.93, blue: 1.00).opacity(0.95), .clear],
+                center: UnitPoint(x: 0.78, y: 0.26), startRadius: 0, endRadius: 85
+            )
+            RadialGradient(
+                colors: [Color(red: 0.86, green: 0.99, blue: 0.95).opacity(0.95), .clear],
+                center: UnitPoint(x: 0.72, y: 0.82), startRadius: 0, endRadius: 85
+            )
+            RadialGradient(
+                colors: [Color(red: 0.93, green: 0.87, blue: 1.00).opacity(0.95), .clear],
+                center: UnitPoint(x: 0.20, y: 0.78), startRadius: 0, endRadius: 85
+            )
+            // 左上角那一点油光
+            RadialGradient(
+                colors: [Color.white.opacity(0.95), .clear],
+                center: UnitPoint(x: 0.24, y: 0.16), startRadius: 0, endRadius: 26
+            )
         }
     }
 }
