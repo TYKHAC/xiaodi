@@ -176,6 +176,12 @@ jobs:
           xcrun simctl ui "$UDID" appearance dark
           sleep 4
           xcrun simctl io "$UDID" screenshot shots/home-dark.png
+          # 设置页（RootView 的 ZXJ_SHOT 钩子直接路由过去）
+          xcrun simctl terminate "$UDID" "$BUNDLE" || true
+          xcrun simctl ui "$UDID" appearance light
+          SIMCTL_CHILD_ZXJ_SHOT=settings xcrun simctl launch "$UDID" "$BUNDLE"
+          sleep 8
+          xcrun simctl io "$UDID" screenshot shots/settings-light.png
           xcrun simctl terminate "$UDID" "$BUNDLE" || true
           xcrun simctl shutdown "$UDID" || true
           ls -la shots/

@@ -10,6 +10,7 @@ import SwiftUI
 
 struct DirectChatView: View {
     @EnvironmentObject private var store: AppStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var messages: [DirectChatMessage] = DirectChatLog.load()
     @State private var draft = ""
     @State private var streamingText = ""
@@ -91,16 +92,24 @@ struct DirectChatView: View {
                 .textSelection(.enabled)
                 .padding(.horizontal, 13)
                 .padding(.vertical, 10)
+                // 朱小姐主题 v1：用户气泡与远端对话页完全一致
+                // （淡染+描边+自适应，ZhuTheme 统一取值，不再各页各画）
                 .background(
                     role == "user"
-                        ? AnyShapeStyle(LinearGradient(
-                            colors: [Color(red: 0.35, green: 0.45, blue: 0.95),
-                                     Color(red: 0.45, green: 0.35, blue: 0.9)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                        ? AnyShapeStyle(ZhuTheme.accentFill(dark: colorScheme == .dark))
                         : AnyShapeStyle(Color(uiColor: .secondarySystemBackground)),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: ZhuTheme.radiusBubble, style: .continuous)
                 )
-                .foregroundStyle(role == "user" ? .white : .primary)
+                .overlay {
+                    if role == "user" {
+                        RoundedRectangle(cornerRadius: ZhuTheme.radiusBubble, style: .continuous)
+                            .strokeBorder(
+                                ZhuTheme.accentStroke(dark: colorScheme == .dark),
+                                lineWidth: 0.7
+                            )
+                    }
+                }
+                .foregroundStyle(.primary)
             if role == "user" { EmptyView() } else { Spacer(minLength: 48) }
         }
     }

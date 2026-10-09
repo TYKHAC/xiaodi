@@ -13,6 +13,35 @@ enum DSHColor {
     static let success = Color(red: 0.18, green: 0.72, blue: 0.36)
 }
 
+/// 朱小姐统一主题「珍珠」v1 —— 用户 2026-10-09：
+/// 「东拼西凑很杂，我想要统一主题」。**所有界面从这里取值，别再各写各的。**
+///
+/// 规范三条：
+/// 1. 一个强调色（accent，值＝旧 ocean 不变，避免全 App 迁移）；
+///    UIKit 侧同值在 ConversationViewport.updateBubbleColors（0.18,0.42,0.9）。
+/// 2. 一个卡片语言：cardFill/cardStroke 自适应明暗（白底黑字、深底白字都成立）。
+/// 3. 一个圆角：气泡 15、卡片 16、控件 14。
+/// 语义色不受统一约束：success绿 / orange警告 / purple推理徽章 —— 只做状态，不做装饰。
+enum ZhuTheme {
+    /// 唯一强调色
+    static let accent = DSHColor.ocean
+
+    /// 用户气泡填充（淡染，非实色 —— 远端/UIKit 侧同参数）
+    static func accentFill(dark: Bool) -> Color { accent.opacity(dark ? 0.24 : 0.11) }
+
+    /// 用户气泡描边
+    static func accentStroke(dark: Bool) -> Color { accent.opacity(dark ? 0.34 : 0.08) }
+
+    /// 卡片填充 / 描边（自适应）
+    static let cardFill = Color.primary.opacity(0.05)
+    static let cardStroke = Color.primary.opacity(0.08)
+
+    /// 统一圆角
+    static let radiusBubble: CGFloat = 15
+    static let radiusCard: CGFloat = 16
+    static let radiusControl: CGFloat = 14
+}
+
 /// 朱小姐首页背景 —— 珍珠光晕（用户要求去掉 DeepSeek 落地页的点阵样式）。
 /// 浅色：系统底 + 三团珍珠色柔光；深色：藏蓝底 + 淡彩光晕。
 /// 全部纯代码渐变，不依赖素材，也不用 Metal。

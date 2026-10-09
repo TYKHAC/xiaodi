@@ -87,7 +87,8 @@ private struct RootNavigationHost: View, Equatable {
                         destination(for: route)
                     }
                 }
-                .background(DSHColor.navy)
+                // 朱小姐主题：导航底色跟随明暗（原来恒定藏蓝 = 明暗接缝的来源）
+                .background(colorScheme == .dark ? DSHColor.navy : Color(uiColor: .systemBackground))
                 .overlay {
                     Color.black.opacity(dimOpacity)
                         .allowsHitTesting(false)
@@ -114,6 +115,11 @@ private struct RootNavigationHost: View, Equatable {
                 store.connectOnColdLaunchIfPaired()
             }
             openPrimaryConversation()
+            // CI 视觉自查钩子：模拟器用 SIMCTL_CHILD_ZXJ_SHOT=settings 启动时
+            // 直接推到设置页，让每轮 CI 能截到目标界面（正常启动无此环境变量）。
+            if ProcessInfo.processInfo.environment["ZXJ_SHOT"] == "settings" {
+                navigationPath = [.settings]
+            }
         }
         // store 在本结构体里是"不被观察的引用"（见文件头注释），sessions/gateway
         // 变化不会让 body 重算，onChange 收不到 —— 必须用 onReceive 直接订阅。
