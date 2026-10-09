@@ -189,6 +189,7 @@
 			isa = PBXGroup;
 			children = (
 				A9F1X011 /* VoiceInputController.swift */,
+				A9F1X031 /* DirectConnection.swift */,
 				A9F100000000000000000002 /* AppPreferences.swift */,
 				A9F200000000000000000002 /* PairingPayloadParser.swift */,
 				A9F300000000000000000002 /* KMPDomainIntents.swift */,
@@ -300,6 +301,7 @@
 			isa = PBXGroup;
 			children = (
 				EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */,
+				A9F1X041 /* DirectChatView.swift */,
 				EEABECFD00017A6E10B1F4A3 /* HumanQuestionView.swift */,
 				A1B2C3D4E5F60718293A4B5D /* ApprovalRequestView.swift */,
 				5A37B43613D712F252BA91D7 /* RootView.swift */,

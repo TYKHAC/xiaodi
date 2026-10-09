@@ -62,12 +62,15 @@ for (const f of NEW) {
   );
 
   // 3. Group：在同组的 AppPreferences（Core）/ ConversationViewport（Components）/
-  //    ConversationView（Views）后面挂一行
+  //    ConversationView（Views）后面挂一行。
+  //    ⚠️ 锚点不能带前导 '('：PBXGroup 的 children 每项独占一行，括号只在 `children = (` 那里。
+  //    没挂进组 = fileRef 悬空 → 路径解析到仓库根 → CI 报
+  //    "Build input files cannot be found: <repo根>/Xxx.swift"（第14轮踩过）。
   const anchor = f.group === 'Core'
-    ? '(A9F100000000000000000002 /* AppPreferences.swift */,'
+    ? 'A9F100000000000000000002 /* AppPreferences.swift */,'
     : f.group === 'Views'
-      ? '(EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */,'
-      : '(D863208EF01781A899165473448240DD51AFA530 /* Components */,';
+      ? 'EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */,'
+      : 'D863208EF01781A899165473448240DD51AFA530 /* Components */,';
   if (text.includes(anchor)) {
     text = text.replace(anchor, `${anchor}\n\t\t\t\t${refId} /* ${f.name} */,`);
   } else {
