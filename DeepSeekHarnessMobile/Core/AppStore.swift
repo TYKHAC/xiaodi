@@ -319,6 +319,36 @@ final class AppStore: ObservableObject {
         didSet { MessageFontScale.set(messageFontScale) }
     }
 
+    // ── 朱小姐直连模式（P0-1：无电脑也能聊）──
+
+    /// App 自带 key 直连 OpenAI 兼容端点的配置（key 在 Keychain，这里只有非敏感部分）
+    @Published var directConfig: DirectConnectionConfig {
+        didSet { directConfig.save() }
+    }
+
+    /// 直连设置页里的连接测试状态
+    @Published var directTestState: DirectTestState?
+
+    /// 无会话且开了直连 → 对话页渲染直连聊天页，而不是空态 hero
+    var isDirectModeActive: Bool { selectedSessionId == nil && directConfig.enabled }
+
+    func testDirectConnection() {
+        guard let apiKey = DirectAPIKeyStore.load(), !apiKey.isEmpty else {
+            directTestState = .fail("还没填 API Key —— 填好点保存，Key 只进 Keychain")
+            return
+        }
+        directTestState = .testing
+        let config = directConfig
+        Task { @MainActor in
+            do {
+                let reply = try await DirectChatClient().test(config: config, apiKey: apiKey)
+                directTestState = .ok(reply)
+            } catch {
+                directTestState = .fail(error.localizedDescription)
+            }
+        }
+    }
+
     /// 「这一轮是语音发起的」—— 用来决定 turn/end 时要不要念
     @Published private(set) var lastTurnWasVoice: Bool = false
 
@@ -586,6 +616,7 @@ final class AppStore: ObservableObject {
         // 再接回调。反了的话第一次播报会用错开关。
         self.speakRepliesEnabled = preferences.speakRepliesEnabled
         self.messageFontScale = MessageFontScale.current
+        self.directConfig = DirectConnectionConfig.saved
         self.voice.speakReplies = preferences.speakRepliesEnabled
         // 注意：voice.onTranscribed 会闭包捕获 self，而 Swift 要求
         // 「所有存储属性都初始化完毕」之后才能捕获 self。

@@ -27,6 +27,8 @@ const PBX = path.join(ROOT, 'DeepSeekHarnessMobile.xcodeproj', 'project.pbxproj'
 const NEW = [
   { name: 'VoiceInputController.swift', group: 'Core',      id: 'A9F1X01' },
   { name: 'SiriMicButton.swift',        group: 'Components', id: 'A9F1X02' },
+  { name: 'DirectConnection.swift',     group: 'Core',      id: 'A9F1X03' },
+  { name: 'DirectChatView.swift',       group: 'Views',     id: 'A9F1X04' },
 ];
 
 let text = fs.readFileSync(PBX, 'utf8');
@@ -59,10 +61,13 @@ for (const f of NEW) {
     `${refId} /* ${f.name} */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ${f.name}; sourceTree = "<group>"; };\n\t$1`,
   );
 
-  // 3. Group：在同组的 AppPreferences（Core）或 ConversationViewport（Components）后面挂一行
+  // 3. Group：在同组的 AppPreferences（Core）/ ConversationViewport（Components）/
+  //    ConversationView（Views）后面挂一行
   const anchor = f.group === 'Core'
     ? '(A9F100000000000000000002 /* AppPreferences.swift */,'
-    : '(D863208EF01781A899165473448240DD51AFA530 /* Components */,';
+    : f.group === 'Views'
+      ? '(EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */,'
+      : '(D863208EF01781A899165473448240DD51AFA530 /* Components */,';
   if (text.includes(anchor)) {
     text = text.replace(anchor, `${anchor}\n\t\t\t\t${refId} /* ${f.name} */,`);
   } else {

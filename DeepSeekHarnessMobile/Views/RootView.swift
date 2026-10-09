@@ -133,6 +133,10 @@ private struct RootNavigationHost: View, Equatable {
             }
         }
         .onOpenURL(perform: openLiveActivityURL)
+        // 直连聊天页报错里的「设置」按钮 → 推到设置页（同栈返回 chevron 仍可用）
+        .onReceive(NotificationCenter.default.publisher(for: .zxjOpenDirectSettings)) { _ in
+            navigate(to: .settings)
+        }
         .onReceive(AgentUserNotificationManager.shared.$pendingSessionRoute) { route in
             guard let route, route.gatewayID == store.gatewayLocalID else { return }
             pendingLiveActivitySessionID = route.sessionID

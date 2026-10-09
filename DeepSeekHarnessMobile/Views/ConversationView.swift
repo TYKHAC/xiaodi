@@ -270,6 +270,15 @@ struct ConversationView: View {
                     )
                 }
             }
+
+            // 朱小姐：直连模式（无会话 + 开了直连）→ 独立直连聊天页盖住网关时间线，
+            // 不碰 KMP store（远端事件只认已订阅的会话，硬塞会被拒）。
+            if store.isDirectModeActive {
+                DirectChatView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(conversationBackground)
+                    .zIndex(3)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // 朱小姐：字号设置。Markdown 正文走主题（上面已乘倍数），
@@ -472,10 +481,13 @@ struct ConversationView: View {
                             .padding(.horizontal, 14)
                             .padding(.bottom, 8)
                         }
-                        VStack(spacing: 10) {
-                            slashCommandMenus
-                                .padding(.horizontal, 14)
-                            composer
+                        // 朱小姐：直连模式自带输入栏，网关 composer 整个收起
+                        if !store.isDirectModeActive {
+                            VStack(spacing: 10) {
+                                slashCommandMenus
+                                    .padding(.horizontal, 14)
+                                composer
+                            }
                         }
                     }
                 }

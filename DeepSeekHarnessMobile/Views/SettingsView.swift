@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var store: AppStore
     @State private var pendingPermission: DefaultPermissionChoice?
+    // 直连 API Key 的编辑态：首次从 Keychain 读出（回显即在位，可改可清空）
+    @State private var directAPIKey: String = DirectAPIKeyStore.load() ?? ""
 
     private var selectedPresetName: String {
         guard let id = store.agentPresetDefault else { return String(localized: "未读取") }
@@ -119,6 +121,52 @@ struct SettingsView: View {
                 Text("文字大小")
             } footer: {
                 Text("只影响对话里消息正文的字号；系统「更大文字」设置也依然有效。")
+            }
+
+            Section {
+                Toggle(isOn: $store.directConfig.enabled) {
+                    Label("启用直连模式", systemImage: "antenna.radiowaves.left.and.right")
+                }
+                TextField("接口地址（如 https://api.deepseek.com/v1）", text: $store.directConfig.baseURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                TextField("模型（如 deepseek-chat）", text: $store.directConfig.model)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("API Key", text: $directAPIKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("保存 Key 到本机 Keychain") {
+                    do {
+                        let trimmed = directAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if trimmed.isEmpty { DirectAPIKeyStore.delete() } else {
+                            try DirectAPIKeyStore.save(trimmed)
+                        }
+                        store.directTestState = nil
+                    } catch {
+                        store.lastError = error.localizedDescription
+                    }
+                }
+                Button {
+                    store.testDirectConnection()
+                } label: {
+                    HStack {
+                        Text("测试连接")
+                        Spacer()
+                        switch store.directTestState {
+                        case nil: EmptyView()
+                        case .testing: ProgressView()
+                        case .ok(let reply): Text("✓ " + reply).foregroundStyle(.green).lineLimit(1)
+                        case .fail(let reason): Text(reason).foregroundStyle(.red).lineLimit(2)
+                        }
+                    }
+                }
+                .disabled(store.directTestState == .testing)
+            } header: {
+                Text("直连模式（无电脑也能聊）")
+            } footer: {
+                Text("开启后：没连上电脑时，对话页直接进直连聊天。Key 只存本机 Keychain，不出手机；连着电脑时照常走远程。")
             }
 
             Section("Mobile Gateway") {
