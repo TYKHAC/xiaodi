@@ -347,6 +347,14 @@ final class VoiceInputController: NSObject, ObservableObject {
         for mark in ["#", ">", "-", "*", "_", "~"] {
             t = t.replacingOccurrences(of: "\(mark) ", with: "")
         }
+        // 朱小姐：漏网的标记 —— **粗体**/~~删除线~~ 会把"星号"念出来
+        t = t.replacingOccurrences(of: "**", with: "")
+        t = t.replacingOccurrences(of: "__", with: "")
+        t = t.replacingOccurrences(of: "~~", with: "")
+        t = t.replacingOccurrences(of: "*", with: "")   // 斜体/残留星号，宁可丢星号不念"星"
+        // 行首标题（#标题，井号后可没空格）与有序列表序号
+        t = t.replacingOccurrences(of: #"(?m)^\s*#+\s*"#, with: "", options: .regularExpression)
+        t = t.replacingOccurrences(of: #"(?m)^\s*\d+\.\s+"#, with: "", options: .regularExpression)
         // 表格竖线
         t = t.replacingOccurrences(of: "|", with: "，")
         // 连续空白

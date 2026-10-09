@@ -214,6 +214,10 @@ struct DirectChatView: View {
         guard !text.isEmpty else { return }
         messages.append(DirectChatMessage(role: "assistant", content: text))
         DirectChatLog.save(messages)
+        // 播报开关开着 → 直连回答也念（和远程模式同一个总开关）
+        if store.speakRepliesEnabled {
+            store.voice.speak(text)
+        }
     }
 
     private func stop() {

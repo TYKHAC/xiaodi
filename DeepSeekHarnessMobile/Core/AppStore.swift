@@ -2830,15 +2830,13 @@ final class AppStore: ObservableObject {
     private func merge(_ record: SessionEvent) {
         if record.event.type == "turn/end" {
             cancellingSessionIDs.remove(record.sessionId)
-            // ── 小弟：语音发起的这一轮说完后，把最后一条完整回答交给播报 ──
-            // 必须两个条件都满足才念：
-            //   ① 这一轮是用户「按住说话」发起的（打字聊天不念）
-            //   ② 播报开关已打开
-            if lastTurnWasVoice,
-               speakRepliesEnabled,
+            // ── 朱小姐：播报开关开着就念这一轮的完整回答（打字/语音轮都念）──
+            // 顶栏静音键 = speakRepliesEnabled 总开关；voice.speak 内部做
+            // Markdown 清洗 + 分句；一轮只念最后一条定稿回复。
+            lastTurnWasVoice = false      // 标记用完即清
+            if speakRepliesEnabled,
                record.sessionId == selectedSessionId,
                let last = lastAssistantReplyText(sessionId: record.sessionId) {
-                lastTurnWasVoice = false      // 一轮只念一次
                 voice.speak(last)
             }
         }
