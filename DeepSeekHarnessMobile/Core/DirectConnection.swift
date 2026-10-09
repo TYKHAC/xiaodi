@@ -118,21 +118,48 @@ struct DirectChatMessage: Codable, Equatable, Identifiable, Hashable {
     var id: Double { stamp }
 }
 
-/// 直连会话日志（用户/助手消息），简单持久化到 UserDefaults，换会话不清。
-enum DirectChatLog {
-    private static let key = "xiaodi.directLog"
+/// 独立 agent 的本地会话 —— 用户 2026-10-09 产品决策：
+/// 手机独立 agent 的会话与电脑会话**完全隔离**（共用同一个大脑，但会话列表互不显示）；
+/// 未连接时抽屉只显示本地会话，电脑会话只在远程连接时出现；
+/// 本地会话离线也保留（本来就是这个独立 agent 自己开的）。
+struct DirectChatSession: Codable, Identifiable, Equatable, Hashable {
+    var id: String = UUID().uuidString
+    var title: String
+    var messages: [DirectChatMessage] = []
+    var updatedAt: Date = Date()
+}
 
-    static func load() -> [DirectChatMessage] {
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let list = try? JSONDecoder().decode([DirectChatMessage].self, from: data) else { return [] }
-        return list
+/// 本地会话持久化（UserDefaults）。旧版单一日志自动迁移成第一个会话。
+enum DirectChatLog {
+    private static let sessionsKey = "xiaodi.directSessions"
+    private static let activeKey = "xiaodi.directActiveSession"
+    private static let legacyKey = "xiaodi.directLog"
+
+    static func loadSessions() -> [DirectChatSession] {
+        if let data = UserDefaults.standard.data(forKey: sessionsKey),
+           let list = try? JSONDecoder().decode([DirectChatSession].self, from: data),
+           !list.isEmpty {
+            return list
+        }
+        // v1 迁移：旧的单一日志 → 第一个会话
+        if let legacy = UserDefaults.standard.data(forKey: legacyKey),
+           let messages = try? JSONDecoder().decode([DirectChatMessage].self, from: legacy),
+           !messages.isEmpty {
+            let migrated = DirectChatSession(title: "直连会话", messages: messages)
+            saveSessions([migrated])
+            return [migrated]
+        }
+        return [DirectChatSession(title: "直连会话")]
     }
 
-    static func save(_ messages: [DirectChatMessage]) {
-        // system 消息是发请求时拼的，不落盘
-        let persistable = messages.filter { $0.role != "system" }
-        guard let data = try? JSONEncoder().encode(persistable) else { return }
-        UserDefaults.standard.set(data, forKey: key)
+    static func saveSessions(_ sessions: [DirectChatSession]) {
+        guard let data = try? JSONEncoder().encode(sessions) else { return }
+        UserDefaults.standard.set(data, forKey: sessionsKey)
+    }
+
+    static var activeID: String {
+        get { UserDefaults.standard.string(forKey: activeKey) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: activeKey) }
     }
 }
 

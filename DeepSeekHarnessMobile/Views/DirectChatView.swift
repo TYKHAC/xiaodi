@@ -11,7 +11,6 @@ import SwiftUI
 struct DirectChatView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.colorScheme) private var colorScheme
-    @State private var messages: [DirectChatMessage] = DirectChatLog.load()
     @State private var draft = ""
     @State private var streamingText = ""
     @State private var isStreaming = false
@@ -28,7 +27,7 @@ struct DirectChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if messages.isEmpty && streamingText.isEmpty {
+            if store.activeDirectSession.messages.isEmpty && streamingText.isEmpty {
                 welcome
             } else {
                 messageList
@@ -65,7 +64,7 @@ struct DirectChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(messages) { message in
+                    ForEach(store.activeDirectSession.messages) { message in
                         bubble(message.role, message.content)
                     }
                     if !streamingText.isEmpty {
@@ -76,7 +75,7 @@ struct DirectChatView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
             }
-            .onChange(of: messages) { _, _ in
+            .onChange(of: store.activeDirectSession.messages) { _, _ in
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
             .onChange(of: streamingText) { _, _ in
@@ -184,13 +183,12 @@ struct DirectChatView: View {
         }
 
         let outgoing = DirectChatMessage(role: "user", content: text)
-        messages.append(outgoing)
-        DirectChatLog.save(messages)
+        store.appendDirectMessage(outgoing)
         draft = ""
         streamingText = ""
         isStreaming = true
 
-        let history = [systemPrompt] + messages
+        let history = [systemPrompt] + store.activeDirectSession.messages
         streamTask = Task { @MainActor in
             do {
                 let stream = DirectChatClient().stream(
@@ -221,8 +219,7 @@ struct DirectChatView: View {
         let text = streamingText.trimmingCharacters(in: .whitespacesAndNewlines)
         streamingText = ""
         guard !text.isEmpty else { return }
-        messages.append(DirectChatMessage(role: "assistant", content: text))
-        DirectChatLog.save(messages)
+        store.appendDirectMessage(DirectChatMessage(role: "assistant", content: text))
         // 播报开关开着 → 直连回答也念（和远程模式同一个总开关）
         if store.speakRepliesEnabled {
             store.voice.speak(text)

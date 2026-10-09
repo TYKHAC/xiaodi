@@ -163,9 +163,63 @@ private struct RootNavigationHost: View, Equatable {
 
     // MARK: - 朱小姐：左划栏（根层级，包住整个导航栈）
 
-    /// 会话按最后活动时间倒序（当前会话保留并打勾）
+    /// 会话列表（用户 2026-10-09 会话域隔离决策）：
+    /// · 远程连接时 = 电脑会话（只显示真有对话的、未归档的 —— 修"电脑上没这么多会话"）
+    /// · 未连接时 = 独立 agent 的本地会话，电脑会话**完全不显示**
     private var drawerSessions: [SessionSummary] {
-        store.sessions.sorted { $0.lastActivity > $1.lastActivity }
+        guard store.gateway.state.isConnected else { return [] }
+        return store.sessions
+            .filter { $0.isVisibleInHistory && !store.archivedSessionIds.contains($0.id) }
+            .sorted { $0.lastActivity > $1.lastActivity }
+    }
+
+    private var drawerDirectSessions: [DirectChatSession] {
+        store.gateway.state.isConnected ? [] : store.drawerDirectSessions
+    }
+
+    /// 独立 agent 的本地会话行（离线时显示）
+    private func directSessionRow(_ session: DirectChatSession) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "circle.dashed")
+                .font(.system(size: 16, weight: .medium))
+                .frame(width: 24)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.title.truncatingToLength(40))
+                    .font(.system(size: 16))
+                Text(timeAgo(session.updatedAt))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            if session.id == store.activeDirectSessionID {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            closeDrawer()
+            store.selectDirectSession(id: session.id)
+            openDirectChat()
+        }
+    }
+
+    /// 打开直连聊天：直连页盖在根路由上（selectedSessionId==nil 且直连开关开）
+    private func openDirectChat() {
+        primaryChoiceMade = true   // 抑制自动打开远程会话
+        navigationPath = []
+    }
+
+    /// 新会话：远程=电脑新会话；未连接=独立本地新会话（会话域隔离）
+    private func newSessionAction() {
+        if store.gateway.state.isConnected {
+            startNewConversation()
+        } else {
+            store.startNewDirectSession()
+            openDirectChat()
+        }
     }
 
     @ViewBuilder
@@ -184,7 +238,7 @@ private struct RootNavigationHost: View, Equatable {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 20, weight: .medium))
                         .frame(width: 24)
-                }, action: { selectDrawerItem { startNewConversation() } })
+                }, action: { selectDrawerItem { newSessionAction() } })
 
                 // 配对：状态和扫码/手动弹层都自包含在这个行组件里
                 PairingDrawerRow()
@@ -212,6 +266,9 @@ private struct RootNavigationHost: View, Equatable {
 
                 sectionHeader("会话")
                 VStack(spacing: 0) {
+                    ForEach(drawerDirectSessions) { local in
+                        directSessionRow(local)
+                    }
                     ForEach(drawerSessions) { session in
                         drawerSessionRow(session)
                             .contentShape(Rectangle())
@@ -219,6 +276,15 @@ private struct RootNavigationHost: View, Equatable {
                                 closeDrawer()
                                 openConversationFromList(session)
                             }
+                    }
+                    if drawerSessions.isEmpty && drawerDirectSessions.isEmpty {
+                        Text(store.gateway.state.isConnected
+                             ? "暂无会话"
+                             : "连接电脑后显示电脑端会话；独立 agent 的会话在下面保留")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 22)
+                            .padding(.vertical, 8)
                     }
                 }
 

@@ -335,6 +335,49 @@ final class AppStore: ObservableObject {
     /// 直连设置页里的连接测试状态
     @Published var directTestState: DirectTestState?
 
+    // ── 朱小姐：独立 agent 的本地会话（用户 2026-10-09 决策）──
+    // 与电脑会话完全隔离：未连接时抽屉只显示这里，连接时显示电脑的；
+    // 离线也保留（本来就是独立 agent 自己开的会话）。
+    @Published private(set) var directSessions: [DirectChatSession] = DirectChatLog.loadSessions()
+
+    @Published var activeDirectSessionID: String = DirectChatLog.activeID {
+        didSet { DirectChatLog.activeID = activeDirectSessionID }
+    }
+
+    var activeDirectSession: DirectChatSession {
+        if let hit = directSessions.first(where: { $0.id == activeDirectSessionID }) { return hit }
+        return directSessions.first ?? DirectChatSession(title: "直连会话")
+    }
+
+    /// 未连接时抽屉要显示的本地会话（最新活动在前）
+    var drawerDirectSessions: [DirectChatSession] {
+        directSessions.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    func selectDirectSession(id: String) {
+        guard directSessions.contains(where: { $0.id == id }) else { return }
+        activeDirectSessionID = id
+    }
+
+    /// 新建独立会话（离线"新会话"入口走这里）
+    func startNewDirectSession() {
+        let session = DirectChatSession(title: "直连会话 \(directSessions.count + 1)")
+        directSessions.insert(session, at: 0)
+        DirectChatLog.saveSessions(directSessions)
+        activeDirectSessionID = session.id
+    }
+
+    /// 往当前活跃的本地会话追加一条消息（system 提示不落盘）
+    func appendDirectMessage(_ message: DirectChatMessage) {
+        guard message.role != "system" else { return }
+        guard !directSessions.isEmpty else { return }
+        var index = directSessions.firstIndex(where: { $0.id == activeDirectSessionID }) ?? 0
+        if index >= directSessions.count { index = 0 }
+        directSessions[index].messages.append(message)
+        directSessions[index].updatedAt = Date()
+        DirectChatLog.saveSessions(directSessions)
+    }
+
     /// 模型配置中心 · 生图模型（OpenAI 兼容 images/generations）
     @Published var imageGenConfig: MediaModelConfig {
         didSet { imageGenConfig.saveImage() }

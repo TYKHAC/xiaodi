@@ -8,6 +8,8 @@ struct SettingsView: View {
     // 模型配置中心：生图/视频各自的 Key 编辑态
     @State private var mediaImageKey: String = MediaAPIKeyStore.load(.image) ?? ""
     @State private var mediaVideoKey: String = MediaAPIKeyStore.load(.video) ?? ""
+    // 模型配置默认收起（用户 2026-10-09：「配置模型那里要简洁一点，全摊开的收起来」）
+    @State private var modelConfigExpanded = false
 
     private var selectedPresetName: String {
         guard let id = store.agentPresetDefault else { return String(localized: "未读取") }
@@ -126,6 +128,23 @@ struct SettingsView: View {
                 Text("只影响对话里消息正文的字号；系统「更大文字」设置也依然有效。")
             }
 
+            Section {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { modelConfigExpanded.toggle() }
+                } label: {
+                    HStack {
+                        Label(modelConfigExpanded ? "收起模型配置" : "模型配置（直连 · 生图 · 视频）",
+                              systemImage: "cpu")
+                        Spacer()
+                        Image(systemName: modelConfigExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .foregroundStyle(.primary)
+            }
+
+            if modelConfigExpanded {
             Section {
                 Toggle(isOn: $store.directConfig.enabled) {
                     Label("启用直连模式", systemImage: "antenna.radiowaves.left.and.right")
@@ -246,6 +265,7 @@ struct SettingsView: View {
                 Text("视频模型")
             } footer: {
                 Text("视频接口各家差异大，先把配置存下；生成按钮随后接线。Key 只存本机 Keychain。")
+            }
             }
 
             Section {
