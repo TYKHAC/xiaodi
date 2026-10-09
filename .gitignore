@@ -38,3 +38,6 @@ _xcodebuild*.zip
 _log*/
 _*.zip
 _log*/
+_simlog2/
+_simlog.zip
+_simlog*
