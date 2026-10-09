@@ -29,6 +29,7 @@ const NEW = [
   { name: 'SiriMicButton.swift',        group: 'Components', id: 'A9F1X02' },
   { name: 'DirectConnection.swift',     group: 'Core',      id: 'A9F1X03' },
   { name: 'DirectChatView.swift',       group: 'Views',     id: 'A9F1X04' },
+  { name: 'BrainBridgeView.swift',      group: 'Views',     id: 'A9F1X05' },
 ];
 
 let text = fs.readFileSync(PBX, 'utf8');

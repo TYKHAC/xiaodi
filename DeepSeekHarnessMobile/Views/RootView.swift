@@ -197,6 +197,13 @@ private struct RootNavigationHost: View, Equatable {
                         .frame(width: 24)
                 }, action: { selectDrawerItem { navigate(to: .scheduledTasks) } })
 
+                // 朱小姐：大脑双向（读=检索大脑快照，写=捕获进 90-inbox）
+                drawerItem("大脑", icon: {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 20, weight: .medium))
+                        .frame(width: 24)
+                }, action: { selectDrawerItem { navigate(to: .brain) } })
+
                 sectionHeader("会话")
                 VStack(spacing: 0) {
                     ForEach(drawerSessions) { session in
@@ -396,6 +403,8 @@ private struct RootNavigationHost: View, Equatable {
             }
         case .settings:
             PushBackChrome { SettingsView() }
+        case .brain:
+            PushBackChrome { BrainBridgeView() }
         case .plugins:
             PushBackChrome { WorkspaceDrawerDestination(title: "插件", message: "插件功能尚未接入") }
         case .scheduledTasks:
@@ -523,6 +532,7 @@ private struct RootNavigationHost: View, Equatable {
         case settings
         case plugins
         case scheduledTasks
+        case brain
     }
 }
 

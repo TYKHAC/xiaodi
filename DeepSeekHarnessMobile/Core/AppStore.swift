@@ -370,6 +370,109 @@ final class AppStore: ObservableObject {
         }
     }
 
+    // ── 朱小姐：大脑双向（P0）── 桥＝PC 端 brain-bridge.mjs :8902（和网关同一台电脑）
+
+    /// 离线时排队的捕获条目（恢复后 flushBrainQueue 补投，不丢）
+    @Published private(set) var brainPending: [BrainCaptureItem] = []
+
+    private static let brainQueueKey = "xiaodi.brainPendingQueue"
+
+    private var brainBridgeBase: URL? {
+        // 从网关地址 ws://<host>:3081/ws/mobile 提取 host
+        guard let host = URL(string: endpoint)?.host, !host.isEmpty else { return nil }
+        return URL(string: "http://\(host):8902")
+    }
+
+    private func brainBridgeError(_ detail: String) -> NSError {
+        NSError(domain: "brainBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: detail])
+    }
+
+    /// GET /search?q=&k= → brain.mjs search --json 的 { hits: [...] }
+    func brainSearch(_ query: String) async throws -> [BrainHit] {
+        guard let base = brainBridgeBase else {
+            throw brainBridgeError("网关地址里提取不到主机名，无法定位桥")
+        }
+        var components = URLComponents(url: base.appendingPathComponent("search"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "k", value: "8"),
+        ]
+        guard let url = components?.url else { throw brainBridgeError("search 地址不合法") }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let http = response as? HTTPURLResponse else { throw brainBridgeError("响应不是 HTTP") }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data.prefix(300), encoding: .utf8) ?? ""
+            throw brainBridgeError("桥返回 HTTP \(http.statusCode)：\(body)")
+        }
+        struct SearchPayload: Decodable { let hits: [BrainHit]? }
+        guard let payload = try? JSONDecoder().decode(SearchPayload.self, from: data) else {
+            throw brainBridgeError("桥响应解析失败")
+        }
+        return payload.hits ?? []
+    }
+
+    /// POST /capture → brain.mjs capture。成功返回 inbox 路径；
+    /// 失败（断连等）入队返回 nil。
+    @discardableResult
+    func brainCapture(text: String, tags: String) async -> String? {
+        if let inbox = try? await brainCaptureOnce(text: text, tags: tags) {
+            return inbox
+        }
+        brainPending.append(BrainCaptureItem(text: text, tags: tags))
+        persistBrainQueue()
+        return nil
+    }
+
+    private func brainCaptureOnce(text: String, tags: String) async throws -> String {
+        guard let base = brainBridgeBase else {
+            throw brainBridgeError("网关地址里提取不到主机名，无法定位桥")
+        }
+        var request = URLRequest(url: base.appendingPathComponent("capture"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        struct Body: Encodable { let text: String; let tags: String }
+        request.httpBody = try JSONEncoder().encode(Body(text: text, tags: tags))
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let body = String(data: data.prefix(300), encoding: .utf8) ?? ""
+            throw brainBridgeError("capture 失败 HTTP \(code)：\(body)")
+        }
+        struct CaptureResponse: Decodable { let ok: Bool; let inbox: String? }
+        guard let payload = try? JSONDecoder().decode(CaptureResponse.self, from: data), payload.ok else {
+            throw brainBridgeError("capture 未确认成功")
+        }
+        return payload.inbox ?? "90-inbox"
+    }
+
+    /// 断连恢复后补投：逐条重发，遇错即停（队首留着，下次接着试）
+    func flushBrainQueue() {
+        guard !brainPending.isEmpty else { return }
+        Task { @MainActor in
+            var remaining = brainPending
+            for item in brainPending {
+                guard (try? await brainCaptureOnce(text: item.text, tags: item.tags)) != nil else { break }
+                remaining.removeAll { $0.id == item.id }
+            }
+            if remaining.count != brainPending.count {
+                brainPending = remaining
+                persistBrainQueue()
+            }
+        }
+    }
+
+    private func persistBrainQueue() {
+        guard let data = try? JSONEncoder().encode(brainPending) else { return }
+        UserDefaults.standard.set(data, forKey: Self.brainQueueKey)
+    }
+
+    private func loadBrainQueue() -> [BrainCaptureItem] {
+        guard let data = UserDefaults.standard.data(forKey: Self.brainQueueKey),
+              let list = try? JSONDecoder().decode([BrainCaptureItem].self, from: data) else { return [] }
+        return list
+    }
+
     /// 无会话且开了直连 → 对话页渲染直连聊天页，而不是空态 hero
     var isDirectModeActive: Bool { selectedSessionId == nil && directConfig.enabled }
 
@@ -660,6 +763,7 @@ final class AppStore: ObservableObject {
         self.directConfig = DirectConnectionConfig.saved
         self.imageGenConfig = MediaModelConfig.savedImage()
         self.videoGenConfig = MediaModelConfig.savedVideo()
+        self.brainPending = loadBrainQueue()
         self.voice.speakReplies = preferences.speakRepliesEnabled
         // 注意：voice.onTranscribed 会闭包捕获 self，而 Swift 要求
         // 「所有存储属性都初始化完毕」之后才能捕获 self。

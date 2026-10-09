@@ -28,6 +28,7 @@
 	A9F1X020 /* SiriMicButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1X021 /* SiriMicButton.swift */; };
 	A9F1X030 /* DirectConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1X031 /* DirectConnection.swift */; };
 	A9F1X040 /* DirectChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1X041 /* DirectChatView.swift */; };
+	A9F1X050 /* BrainBridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1X051 /* BrainBridgeView.swift */; };
 	A9F100000000000000000001 /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100000000000000000002 /* AppPreferences.swift */; };
 		A9F200000000000000000001 /* PairingPayloadParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F200000000000000000002 /* PairingPayloadParser.swift */; };
 		A9F300000000000000000001 /* KMPDomainIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F300000000000000000002 /* KMPDomainIntents.swift */; };
@@ -117,6 +118,7 @@
 	A9F1X021 /* SiriMicButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiriMicButton.swift; sourceTree = "<group>"; };
 	A9F1X031 /* DirectConnection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DirectConnection.swift; sourceTree = "<group>"; };
 	A9F1X041 /* DirectChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DirectChatView.swift; sourceTree = "<group>"; };
+	A9F1X051 /* BrainBridgeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BrainBridgeView.swift; sourceTree = "<group>"; };
 	A9F100000000000000000002 /* AppPreferences.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
 		A9F200000000000000000002 /* PairingPayloadParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PairingPayloadParser.swift; sourceTree = "<group>"; };
 		A9F300000000000000000002 /* KMPDomainIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KMPDomainIntents.swift; sourceTree = "<group>"; };
@@ -301,6 +303,7 @@
 			isa = PBXGroup;
 			children = (
 				EEABECFD00017A6E10B1F4A2 /* ConversationView.swift */,
+				A9F1X051 /* BrainBridgeView.swift */,
 				A9F1X041 /* DirectChatView.swift */,
 				EEABECFD00017A6E10B1F4A3 /* HumanQuestionView.swift */,
 				A1B2C3D4E5F60718293A4B5D /* ApprovalRequestView.swift */,
@@ -529,6 +532,7 @@
 	A9F1X020 /* SiriMicButton.swift in Sources */,
 	A9F1X030 /* DirectConnection.swift in Sources */,
 	A9F1X040 /* DirectChatView.swift in Sources */,
+	A9F1X050 /* BrainBridgeView.swift in Sources */,
 	A9F100000000000000000001 /* AppPreferences.swift in Sources */,
 				A9F200000000000000000001 /* PairingPayloadParser.swift in Sources */,
 				A9F300000000000000000001 /* KMPDomainIntents.swift in Sources */,
