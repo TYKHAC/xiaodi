@@ -155,7 +155,7 @@ private struct RootNavigationHost: View, Equatable {
 
     /// 会话按最后活动时间倒序（当前会话保留并打勾）
     private var drawerSessions: [SessionSummary] {
-        store.sessions.sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
+        store.sessions.sorted { $0.lastActivity > $1.lastActivity }
     }
 
     @ViewBuilder
@@ -271,11 +271,10 @@ private struct RootNavigationHost: View, Equatable {
                 Text(session.title.truncatingToLength(40))
                     .font(.system(size: 16))
                 HStack(spacing: 6) {
-                    if let lastActivity = session.lastActivity {
-                        Text(timeAgo(lastActivity))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
+                    // lastActivity 是非可选 Date（第10轮编译失败的教训：不能 if let 解包）
+                    Text(timeAgo(session.lastActivity))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                     if session.isRunning {
                         Circle()
                             .fill(Color.green)
@@ -447,9 +446,7 @@ private struct RootNavigationHost: View, Equatable {
     /// 同时命中也不会重复打开。
     private func openPrimaryConversation() {
         guard !primaryChoiceMade, navigationPath.isEmpty, newConversationTask == nil else { return }
-        let sorted = store.sessions.sorted {
-            ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast)
-        }
+        let sorted = store.sessions.sorted { $0.lastActivity > $1.lastActivity }
         let target = store.sessions.first { $0.id == store.selectedSessionId } ?? sorted.first
         guard let session = target else { return }
         let header = conversationHeader(for: session)
