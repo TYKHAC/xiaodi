@@ -32,58 +32,82 @@ struct RootView: View {
 /// publications no longer invalidate the `NavigationStack` that owns the bar.
 private struct RootNavigationHost: View, Equatable {
     let store: AppStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var navigationPath: [AppRoute] = []
     @State private var newConversationTask: Task<Void, Never>?
     @State private var pendingLiveActivitySessionID: String?
+    // 朱小姐：左划栏提升到根层级（包住整个 NavigationStack），
+    // 这样在对话页里左划也能开栏，不用先滑回列表页。
+    @State private var drawerOffset: CGFloat = 0
+    @State private var drawerDragStart: CGFloat?
+    // 自动进对话只在"冷启动、用户还没做过任何选择"时生效一次：
+    // 否则用户手动返回列表后，任意一次 sessions 变动都会把他又拽回对话页。
+    @State private var primaryChoiceMade = false
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.store === rhs.store
     }
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            WorkspaceView(
-                onOpenSession: { session in
-                    newConversationTask?.cancel()
-                    let header = conversationHeader(for: session)
-                    Task { @MainActor in
-                        guard await store.prepareConversation(for: session),
-                              !Task.isCancelled else { return }
-                        navigate(to: .conversation(header))
+        GeometryReader { geometry in
+            let drawerWidth = min(geometry.size.width * 0.76, 360)
+            let progress = min(max(drawerOffset / max(drawerWidth, 1), 0), 1)
+            let dimProgress = min(max((progress - 0.45) / 0.55, 0), 1)
+            let dimOpacity = 0.16 * dimProgress * dimProgress * (3 - 2 * dimProgress)
+            let topInset = geometry.safeAreaInsets.top
+            let fullHeight = geometry.size.height + topInset + geometry.safeAreaInsets.bottom
+
+            ZStack(alignment: .leading) {
+                // 抽屉背板：只铺安全区（状态栏交给各页面自己画，避免改到
+                // 设置页等页面的状态栏底色）
+                (colorScheme == .dark
+                    ? Color(red: 36.0 / 255, green: 36.0 / 255, blue: 38.0 / 255)
+                    : Color.white)
+
+                // 抽屉面板：内容手动延伸到状态栏后面（和原来 WorkspaceView 的处理一致）
+                drawerPanel(progress: progress, topInset: topInset, width: drawerWidth)
+                    .frame(width: drawerWidth, height: fullHeight, alignment: .topLeading)
+                    .offset(y: -topInset)
+
+                // 导航栈（首页 Workspace + 各目的地）：整体右滑让出抽屉。
+                // 注意：不裁剪不加阴影 —— 栈裁剪会切掉 Workspace 用 offset
+                // 手动延伸到状态栏的绘制（light 模式状态栏会露白）。
+                NavigationStack(path: $navigationPath) {
+                    WorkspaceView(
+                        onOpenSession: { openConversationFromList($0) },
+                        onNewSession: { startNewConversation() },
+                        onSettings: {
+                            newConversationTask?.cancel()
+                            navigate(to: .settings)
+                        },
+                        onPlugins: { navigate(to: .plugins) },
+                        onScheduledTasks: { navigate(to: .scheduledTasks) }
+                    )
+                    .navigationDestination(for: AppRoute.self) { route in
+                        destination(for: route)
                     }
-                },
-                onNewSession: {
-                    guard newConversationTask == nil else { return }
-                    newConversationTask = Task { @MainActor in
-                        defer { newConversationTask = nil }
-                        guard await store.prepareNewConversation(),
-                              !Task.isCancelled else { return }
-                        let header = ConversationNavigationHeader(
-                            sessionID: store.selectedSessionId,
-                            title: String(localized: "session.new.fallback", defaultValue: "新建 DeepSeek Harness"),
-                            agentPresetTitle: agentPresetDisplayName(for: store.agentPresetDefault)
-                        )
-                        navigate(to: .conversation(header))
+                }
+                .background(DSHColor.navy)
+                .overlay {
+                    Color.black.opacity(dimOpacity)
+                        .allowsHitTesting(false)
+                }
+                .overlay(alignment: .leading) {
+                    if progress > 0.98 {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture { closeDrawer() }
+                            .accessibilityLabel("关闭侧边栏")
+                            .accessibilityAddTraits(.isButton)
                     }
-                },
-                onSettings: {
-                    newConversationTask?.cancel()
-                    navigate(to: .settings)
-                },
-                onPlugins: {
-                    navigate(to: .plugins)
-                },
-                onScheduledTasks: {
-                    navigate(to: .scheduledTasks)
                 }
-            )
-                .navigationDestination(for: AppRoute.self) { route in
-                    destination(for: route)
-                }
+                .offset(x: drawerOffset)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .simultaneousGesture(drawerDrag(width: drawerWidth))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // 朱小姐：首页 = 对话本体。启动时跳过 Workspace 列表页，直接打开会话。
-        // 会话列表在左划栏里（WorkspaceView 的 drawer）。没有历史会话（首次使用）
+        // 会话列表在根层级左划栏里。没有历史会话（首次使用）
         // 或连接还没建立时，先停在 Workspace，等 sessions 到了/连上了再重试。
         .task {
             if case .disconnected = store.gateway.state {
@@ -102,7 +126,11 @@ private struct RootNavigationHost: View, Equatable {
             openPrimaryConversation()
         }
         .onChange(of: navigationPath) { _, path in
-            if path.isEmpty { store.resumeWorkspace() }
+            if path.isEmpty {
+                store.resumeWorkspace()
+                // 用户主动退回列表页 = 已经做过选择，别再自动拽进对话
+                primaryChoiceMade = true
+            }
         }
         .onOpenURL(perform: openLiveActivityURL)
         .onReceive(AgentUserNotificationManager.shared.$pendingSessionRoute) { route in
@@ -123,6 +151,232 @@ private struct RootNavigationHost: View, Equatable {
         }
     }
 
+    // MARK: - 朱小姐：左划栏（根层级，包住整个导航栈）
+
+    /// 会话按最后活动时间倒序（当前会话保留并打勾）
+    private var drawerSessions: [SessionSummary] {
+        store.sessions.sorted { ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast) }
+    }
+
+    @ViewBuilder
+    private func drawerPanel(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    Image(systemName: "water.waves")
+                        .font(.system(size: 20, weight: .semibold))
+                    Text("朱小姐").font(.system(size: 20, weight: .bold))
+                }
+                .padding(.leading, 12)
+                .padding(.bottom, 12)
+
+                drawerItem("新会话", icon: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 20, weight: .medium))
+                        .frame(width: 24)
+                }, action: { selectDrawerItem { startNewConversation() } })
+
+                // 配对：状态和扫码/手动弹层都自包含在这个行组件里
+                PairingDrawerRow()
+
+                drawerItem("插件", icon: {
+                    Image("DshPluginPinwheel")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .frame(width: 24)
+                }, action: { selectDrawerItem { navigate(to: .plugins) } })
+                drawerItem("定时任务", icon: {
+                    Image(systemName: "clock")
+                        .font(.system(size: 20, weight: .medium))
+                        .frame(width: 24)
+                }, action: { selectDrawerItem { navigate(to: .scheduledTasks) } })
+
+                sectionHeader("会话")
+                VStack(spacing: 0) {
+                    ForEach(drawerSessions) { session in
+                        drawerSessionRow(session)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                closeDrawer()
+                                openConversationFromList(session)
+                            }
+                    }
+                }
+
+                sectionHeader("工作区")
+                drawerItem("全部会话 / 工作区", icon: {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 19, weight: .medium))
+                        .frame(width: 24)
+                }, action: {
+                    // 回到 NavigationStack 根（列表页），不推新路由
+                    navigationPath = []
+                    closeDrawer()
+                })
+
+                Spacer(minLength: 0)
+
+                drawerItem("设置", icon: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 20, weight: .medium))
+                        .frame(width: 24)
+                }, action: { selectDrawerItem { navigate(to: .settings) } })
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, topInset + 18)
+            .foregroundStyle(Color(uiColor: .label))
+            .opacity(0.6 + 0.4 * progress)
+            .scaleEffect(0.9 + 0.1 * progress, anchor: .leading)
+            .accessibilityHidden(progress == 0)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private func drawerItem<Icon: View>(
+        _ title: String,
+        @ViewBuilder icon: () -> Icon,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                icon()
+                Text(title).font(.system(size: 17))
+                Spacer(minLength: 0)
+            }
+            .frame(height: 52)
+            .padding(.horizontal, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.leading, 8)
+            .padding(.top, 14)
+            .padding(.bottom, 6)
+    }
+
+    private func drawerSessionRow(_ session: SessionSummary) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "bubble.left.and.bubble.right")
+                .font(.system(size: 16, weight: .medium))
+                .frame(width: 24)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.title.truncatingToLength(40))
+                    .font(.system(size: 16))
+                HStack(spacing: 6) {
+                    if let lastActivity = session.lastActivity {
+                        Text(timeAgo(lastActivity))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    if session.isRunning {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 5, height: 5)
+                        Text("运行中")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.green)
+                    }
+                    if session.hasUnread {
+                        Circle()
+                            .fill(Color.primary)
+                            .frame(width: 6, height: 6)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            if session.id == store.selectedSessionId {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 20, height: 20)
+            }
+        }
+        .frame(height: 42)
+        .padding(.horizontal, 14)
+        .background(session.id == store.selectedSessionId ? Color.primary.opacity(0.08) : Color.clear)
+        .cornerRadius(8)
+    }
+
+    private func timeAgo(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.dateTimeStyle = .named
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private func drawerDrag(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { value in
+                if drawerDragStart == nil {
+                    guard abs(value.translation.width) > abs(value.translation.height) * 1.2 else { return }
+                    drawerDragStart = drawerOffset
+                }
+                drawerOffset = min(max((drawerDragStart ?? 0) + value.translation.width, 0), width)
+            }
+            .onEnded { value in
+                guard let start = drawerDragStart else { return }
+                drawerDragStart = nil
+                let open = start + value.predictedEndTranslation.width > width * 0.5
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+                    drawerOffset = open ? width : 0
+                }
+            }
+    }
+
+    private func closeDrawer() {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+            drawerOffset = 0
+        }
+    }
+
+    private func selectDrawerItem(_ action: @escaping () -> Void) {
+        action()
+        // 立刻无动画收起，返回时直接露出主页面
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            drawerOffset = 0
+        }
+    }
+
+    /// 打开一个已有会话（左划栏会话行 / 列表页共用）。
+    /// 用「替换」而不是「压栈」——否则从抽屉反复切会话会把栈越堆越深。
+    private func openConversationFromList(_ session: SessionSummary) {
+        newConversationTask?.cancel()
+        let header = conversationHeader(for: session)
+        newConversationTask = Task { @MainActor in
+            defer { newConversationTask = nil }
+            guard await store.prepareConversation(for: session),
+                  !Task.isCancelled else { return }
+            primaryChoiceMade = true
+            navigationPath = [.conversation(header)]
+        }
+    }
+
+    /// 新建会话（左划栏首行 / 列表页按钮共用），同样替换栈。
+    private func startNewConversation() {
+        guard newConversationTask == nil else { return }
+        newConversationTask = Task { @MainActor in
+            defer { newConversationTask = nil }
+            guard await store.prepareNewConversation(),
+                  !Task.isCancelled else { return }
+            let header = ConversationNavigationHeader(
+                sessionID: store.selectedSessionId,
+                title: String(localized: "session.new.fallback", defaultValue: "新建 DeepSeek Harness"),
+                agentPresetTitle: agentPresetDisplayName(for: store.agentPresetDefault)
+            )
+            primaryChoiceMade = true
+            navigationPath = [.conversation(header)]
+        }
+    }
+
     @ViewBuilder
     private func destination(for route: AppRoute) -> some View {
         switch route {
@@ -138,9 +392,9 @@ private struct RootNavigationHost: View, Equatable {
                 ConversationView()
             }
         case .settings:
-            SettingsView()
+            PushBackChrome { SettingsView() }
         case .plugins:
-            WorkspaceDrawerDestination(title: "插件", message: "插件功能尚未接入")
+            PushBackChrome { WorkspaceDrawerDestination(title: "插件", message: "插件功能尚未接入") }
         case .scheduledTasks:
             ScheduledTasksView(store: store) { sessionID in
                 let session = store.sessions.first(where: { $0.id == sessionID }) ?? SessionSummary(
@@ -192,7 +446,7 @@ private struct RootNavigationHost: View, Equatable {
     /// 幂等：已在对话页/任务在跑时直接返回，多个触发源（task、sessions 变化、连接成功）
     /// 同时命中也不会重复打开。
     private func openPrimaryConversation() {
-        guard navigationPath.isEmpty, newConversationTask == nil else { return }
+        guard !primaryChoiceMade, navigationPath.isEmpty, newConversationTask == nil else { return }
         let sorted = store.sessions.sorted {
             ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast)
         }
@@ -203,6 +457,7 @@ private struct RootNavigationHost: View, Equatable {
             defer { newConversationTask = nil }
             guard await store.prepareConversation(for: session), !Task.isCancelled else { return }
             guard navigationPath.isEmpty else { return }
+            primaryChoiceMade = true
             navigationPath = [.conversation(header)]
             await Task.yield()
             guard !Task.isCancelled else { return }
@@ -874,6 +1129,31 @@ private struct ConversationNavigationHeader: Hashable {
 
 /// Owns only navigation chrome. The content below it may observe the complete
 /// app store and update at WebSocket frequency without invalidating the toolbar.
+// 朱小姐：统一的 push 页外壳 —— 隐藏系统返回键（它的边缘返回手势会和
+// 左划栏手势打架），换成左上角 chevron。
+private struct PushBackChrome<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        content()
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 44, height: 32, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(String(localized: "返回"))
+                }
+            }
+    }
+}
+
 private struct ConversationNavigationShell<Content: View>: View {
     let header: ConversationNavigationHeader
     let gateway: GatewayClient
@@ -883,6 +1163,7 @@ private struct ConversationNavigationShell<Content: View>: View {
     @State private var showsWorkspaceFiles = false
     @State private var liveTitle: String?
     @State private var livePresetTitle: String?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         content()
@@ -897,8 +1178,22 @@ private struct ConversationNavigationShell<Content: View>: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarRole(.editor)
+            // 朱小姐：隐藏系统返回键 —— 它的边缘返回手势会和根层级左划栏打架；
+            // 换成左上角 chevron，边缘整条留给抽屉。
+            .navigationBarBackButtonHidden(true)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 44, height: 32, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(String(localized: "返回"))
+                }
                 if #available(iOS 26.0, *) {
                     ToolbarItem(placement: .topBarTrailing) {
                         ConversationNavigationStatus(

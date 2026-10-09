@@ -16,140 +16,22 @@ struct WorkspaceView: View {
     @State private var archivingSession: SessionSummary?
     @State private var connectionIsReady = false
     @State private var showsDirectoryBrowser = false
-    @State private var showsQRScanner = false
-    @State private var showsManualPairing = false
-    @State private var drawerOffset: CGFloat = 0
-    @State private var drawerDragStart: CGFloat?
+    // 朱小姐：抽屉已提升到根层级（RootView）；二维码/手动配对状态自包含在 PairingDrawerRow 里。
     @FocusState private var sessionSearchIsFocused: Bool
-
-    /// 朱小姐：会话列表按最后活动时间倒序，方便快速回到最近的对话。
-    private var sortedSessions: [SessionSummary] {
-        store.sessions
-            .filter { $0.id != store.selectedSessionId }
-            .sorted { a, b in (a.lastActivity ?? .distantPast) > (b.lastActivity ?? .distantPast) }
-    }
-
-    private func openSession(_ session: SessionSummary) {
-        onOpenSession(session)
-    }
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.65))
-            .padding(.leading, 8)
-            .padding(.top, 14)
-            .padding(.bottom, 6)
-    }
-
-    private func drawerSessionRow(_ session: SessionSummary) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 16, weight: .medium))
-                .frame(width: 24)
-                .foregroundStyle(.white.opacity(0.6))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(session.title.truncatingToLength(40))
-                    .font(.system(size: 16))
-                HStack(spacing: 6) {
-                    if let lastActivity = session.lastActivity {
-                        Text(timeAgo(lastActivity))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.white.opacity(0.45))
-                    }
-                    if session.isRunning {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 5, height: 5)
-                        Text("运行中")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.green)
-                    }
-                    if session.hasUnread {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 6, height: 6)
-                    }
-                }
-            }
-            Spacer(minLength: 0)
-            if session.id == store.selectedSessionId {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .frame(width: 20, height: 20)
-            }
-        }
-        .frame(height: 42)
-        .padding(.horizontal, 14)
-        .background(session.id == store.selectedSessionId ? Color.white.opacity(0.08) : Color.clear)
-        .cornerRadius(8)
-    }
-
-    /// 朱小姐：会话行里的「x 分钟前」，用系统相对时间格式化。
-    private func timeAgo(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.dateTimeStyle = .named
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
 
     var body: some View {
         GeometryReader { geometry in
-            let drawerWidth = min(geometry.size.width * 0.76, 360)
-            let progress = min(max(drawerOffset / max(drawerWidth, 1), 0), 1)
-            let dimProgress = min(max((progress - 0.45) / 0.55, 0), 1)
-            let dimOpacity = 0.16 * dimProgress * dimProgress * (3 - 2 * dimProgress)
+            // 保留原来的"延伸到状态栏后"排版数学（frame 加高 + 上移 topInset，
+            // 内容 padding 里再补回来），抽屉相关的东西全部搬到根层级 RootView 了。
             let topInset = geometry.safeAreaInsets.top
             let fullHeight = geometry.size.height + topInset + geometry.safeAreaInsets.bottom
 
-            ZStack(alignment: .leading) {
-                (colorScheme == .dark
-                    ? Color(red: 36.0 / 255, green: 36.0 / 255, blue: 38.0 / 255)
-                    : Color.white)
-                drawerContent(progress: progress, topInset: topInset, width: drawerWidth)
-                    .frame(width: drawerWidth, height: fullHeight, alignment: .topLeading)
-
-                workspaceContent(openDrawer: { openDrawer(width: drawerWidth) }, topInset: topInset)
-                    .frame(width: geometry.size.width, height: fullHeight)
-                    .background(DSHColor.navy)
-                    .overlay {
-                        Color.black.opacity(dimOpacity)
-                            .allowsHitTesting(false)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 48, style: .continuous))
-                    .compositingGroup()
-                    .shadow(
-                        color: .black.opacity(0.12 * progress),
-                        radius: 9 * progress,
-                        x: -2 * progress,
-                        y: 0
-                    )
-                    .shadow(
-                        color: .black.opacity(0.30 * progress),
-                        radius: 26 * progress,
-                        x: -4 * progress,
-                        y: 0
-                    )
-                    .overlay(alignment: .leading) {
-                        if progress > 0.98 {
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture { closeDrawer() }
-                                .accessibilityLabel("关闭侧边栏")
-                                .accessibilityAddTraits(.isButton)
-                        }
-                    }
-                    .offset(x: drawerOffset)
-            }
-            .frame(width: geometry.size.width, height: fullHeight)
-            .offset(y: -topInset)
-            .simultaneousGesture(drawerDrag(width: drawerWidth))
+            workspaceContent(topInset: topInset)
+                .frame(width: geometry.size.width, height: fullHeight)
+                .background(DSHColor.navy)
+                .offset(y: -topInset)
         }
         .background(DSHColor.navy.ignoresSafeArea())
-        .onChange(of: drawerOffset) { _, value in
-            if value > 0 { sessionSearchIsFocused = false }
-        }
         .foregroundStyle(.white)
         .onAppear {
             store.refreshRemoteState()
@@ -184,23 +66,9 @@ struct WorkspaceView: View {
             DirectoryBrowserSheet()
                 .environmentObject(store)
         }
-        .fullScreenCover(isPresented: $showsQRScanner) {
-            GatewayQRScannerView(
-                onCode: handleScannedCode,
-                onCancel: { showsQRScanner = false },
-                onFailure: { message in
-                    showsQRScanner = false
-                    store.lastError = message
-                }
-            )
-        }
-        .sheet(isPresented: $showsManualPairing) {
-            ManualGatewayPairingSheet(gateway: hosts.pairingStore?.gateway ?? store.gateway)
-                .environmentObject(store)
-        }
     }
 
-    private func workspaceContent(openDrawer: @escaping () -> Void, topInset: CGFloat) -> some View {
+    private func workspaceContent(topInset: CGFloat) -> some View {
         ZStack {
             DeepOceanBackground()
                 .contentShape(Rectangle())
@@ -208,7 +76,7 @@ struct WorkspaceView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 6) {
-                        header(openDrawer: openDrawer).id("workspace-header")
+                        header().id("workspace-header")
                         GatewaySwitcherBar()
                     }
                     Spacer(minLength: 44)
@@ -234,7 +102,6 @@ struct WorkspaceView: View {
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            .scrollDisabled(drawerDragStart != nil || drawerOffset > 0)
         }
         // A tap handled by empty layout content does not reach the background
         // layer. Keep a container-level fallback; controls retain their own
@@ -242,9 +109,9 @@ struct WorkspaceView: View {
         .onTapGesture { sessionSearchIsFocused = false }
     }
 
-    private func header(openDrawer: @escaping () -> Void) -> some View {
+    private func header() -> some View {
         // 朱小姐：顶部不放 ☰ 和 ⚙（都进左划栏了），只留居中的名字 + 右上角静音键。
-        // 左划栏靠左边缘右滑打开（drawerDrag 已覆盖）。
+        // 左划栏在根层级（RootView），左边缘右滑即可打开。
         HStack(spacing: 0) {
             Color.clear.frame(width: 34, height: 34)
             Spacer(minLength: 0)
@@ -282,174 +149,6 @@ struct WorkspaceView: View {
         .accessibilityLabel(store.speakRepliesEnabled
                             ? String(localized: "关闭朗读回复")
                             : String(localized: "开启朗读回复"))
-    }
-
-    private func drawerContent(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 朱小姐：左划栏顶部换成名字，不再挂 DeepSeek Harness 的 wordmark
-            HStack(spacing: 8) {
-                Image(systemName: "water.waves")
-                    .font(.system(size: 20, weight: .semibold))
-                Text("朱小姐").font(.system(size: 20, weight: .bold))
-            }
-            .padding(.leading, 12)
-            .padding(.bottom, 12)
-
-            // 朱小姐：第一行直接就是「新会话」——最常用
-            drawerItem("新会话", icon: {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 20, weight: .medium))
-                    .frame(width: 24)
-            }, action: { selectDrawerItem(onNewSession) })
-
-            drawerItem("插件", icon: {
-                Image("DshPluginPinwheel")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 22, height: 22)
-                    .frame(width: 24)
-            }, action: { selectDrawerItem(onPlugins) })
-            drawerItem("定时任务", icon: {
-                Image(systemName: "clock")
-                    .font(.system(size: 20, weight: .medium))
-                    .frame(width: 24)
-            }, action: { selectDrawerItem(onScheduledTasks) })
-
-            // 会话列表（按最后活动时间倒序）
-            sectionHeader("会话")
-            VStack(spacing: 0) {
-                ForEach(sortedSessions) { session in
-                    drawerSessionRow(session)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            // 点一个会话 → 先关闭左划栏，再入栈对话页（Back 才回首页）
-                            closeDrawer()
-                            openSession(session)
-                        }
-                }
-            }
-
-            Spacer(minLength: 0)
-
-            // 朱小姐：⚙ 从顶栏搬进左划栏
-            drawerItem("设置", icon: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 20, weight: .medium))
-                    .frame(width: 24)
-            }, action: { selectDrawerItem(onSettings) })
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, topInset + 18)
-        .foregroundStyle(Color(uiColor: .label))
-        .opacity(0.6 + 0.4 * progress)
-        .scaleEffect(0.9 + 0.1 * progress, anchor: .leading)
-        .accessibilityHidden(progress == 0)
-    }
-
-    private func drawerItem<Icon: View>(
-        _ title: String,
-        @ViewBuilder icon: () -> Icon,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                icon()
-                Text(title).font(.system(size: 17))
-                Spacer(minLength: 0)
-            }
-            .frame(height: 52)
-            .padding(.horizontal, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func drawerDrag(width: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 6)
-            .onChanged { value in
-                if drawerDragStart == nil {
-                    guard abs(value.translation.width) > abs(value.translation.height) * 1.2 else { return }
-                    drawerDragStart = drawerOffset
-                }
-                drawerOffset = min(max((drawerDragStart ?? 0) + value.translation.width, 0), width)
-            }
-            .onEnded { value in
-                guard let start = drawerDragStart else { return }
-                drawerDragStart = nil
-                let open = start + value.predictedEndTranslation.width > width * 0.5
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-                    drawerOffset = open ? width : 0
-                }
-            }
-    }
-
-    private func openDrawer(width: CGFloat) {
-        sessionSearchIsFocused = false
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-            drawerOffset = width
-        }
-    }
-
-    private func closeDrawer() {
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
-            drawerOffset = 0
-        }
-    }
-
-    private func selectDrawerItem(_ action: @escaping () -> Void) {
-        // Start the destination push immediately. Reset the workspace behind it
-        // without a closing animation so Back reveals the main page.
-        action()
-        var transaction = Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            drawerOffset = 0
-        }
-    }
-
-    @ViewBuilder
-    private var _authenticationMenu: some View {
-        GatewayAuthenticationMenu(
-            gateway: store.gateway,
-            onScan: {
-                store.lastError = nil
-                showsQRScanner = true
-            },
-            onManualEntry: {
-                store.lastError = nil
-                showsManualPairing = true
-            }
-        )
-    }
-
-    @ViewBuilder
-    private var _settingsButton: some View {
-        headerButton(systemName: "gearshape.fill", accessibilityLabel: String(localized: "设置"), action: onSettings)
-    }
-
-    @ViewBuilder
-    private func headerButton(systemName: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
-        let label = headerButtonLabel(systemName: systemName)
-        if #available(iOS 26.0, *) {
-            Button(action: action) { label }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .accessibilityLabel(accessibilityLabel)
-        } else {
-            Button(action: action) { label }
-                .buttonStyle(.plain)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 0.8))
-                .accessibilityLabel(accessibilityLabel)
-        }
-    }
-
-    private func headerButtonLabel(systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: 17, weight: .semibold))
-            .frame(width: 40, height: 40)
-            .contentShape(Circle())
     }
 
     private var workspaceCard: some View {
@@ -517,15 +216,6 @@ struct WorkspaceView: View {
         }
     }
 
-    private func handleScannedCode(_ rawValue: String) {
-        do {
-            try store.pair(usingQRCode: rawValue)
-            showsQRScanner = false
-        } catch {
-            showsQRScanner = false
-            store.lastError = error.localizedDescription
-        }
-    }
 
     private var sessionSearch: some View {
         HStack(spacing: 8) {
@@ -897,42 +587,6 @@ private struct GatewayConnectionIndicator: View {
     }
 }
 
-private struct GatewayAuthenticationMenu: View {
-    @ObservedObject var gateway: GatewayClient
-    let onScan: () -> Void
-    let onManualEntry: () -> Void
-
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            menu
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-        } else {
-            menu
-                .buttonStyle(.plain)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 0.8))
-        }
-    }
-
-    private var menu: some View {
-        Menu {
-            Button(action: onScan) {
-                Label("扫描二维码", systemImage: "qrcode.viewfinder")
-            }
-            Button(action: onManualEntry) {
-                Label("手动输入配对信息", systemImage: "keyboard")
-            }
-        } label: {
-            Image(systemName: "person.badge.key.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 40, height: 40)
-                .contentShape(Circle())
-        }
-        .accessibilityLabel(String(localized: "a11y.device-auth.state", defaultValue: "设备认证，\(gateway.state.label)"))
-    }
-
-}
 
 private struct GatewayConnectionStatusText: View {
     @ObservedObject var gateway: GatewayClient
@@ -1328,5 +982,69 @@ private final class GatewayScannerController: UIViewController, AVCaptureMetadat
 extension String {
     func truncatingToLength(_ maxLength: Int) -> String {
         count > maxLength ? String(prefix(maxLength)) + "…" : self
+    }
+}
+
+
+// 朱小姐：配对入口行 —— 状态与扫码/手动弹层全部自包含，
+// 所以能放进根层级左划栏（原先它挂在 Workspace 顶栏上）。
+struct PairingDrawerRow: View {
+    @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var hosts: MultiGatewayStore
+    @State private var showsQRScanner = false
+    @State private var showsManualPairing = false
+
+    var body: some View {
+        Menu {
+            Button {
+                store.lastError = nil
+                showsQRScanner = true
+            } label: {
+                Label("扫描二维码", systemImage: "qrcode.viewfinder")
+            }
+            Button {
+                store.lastError = nil
+                showsManualPairing = true
+            } label: {
+                Label("手动输入配对信息", systemImage: "keyboard")
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "person.badge.key.fill")
+                    .font(.system(size: 18, weight: .medium))
+                    .frame(width: 24)
+                Text("配对设备").font(.system(size: 17))
+                Spacer(minLength: 0)
+                GatewayConnectionStatusText(gateway: store.gateway)
+            }
+            .frame(height: 52)
+            .padding(.horizontal, 14)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel(String(localized: "配对设备"))
+        .fullScreenCover(isPresented: $showsQRScanner) {
+            GatewayQRScannerView(
+                onCode: handleScannedCode,
+                onCancel: { showsQRScanner = false },
+                onFailure: { message in
+                    showsQRScanner = false
+                    store.lastError = message
+                }
+            )
+        }
+        .sheet(isPresented: $showsManualPairing) {
+            ManualGatewayPairingSheet(gateway: hosts.pairingStore?.gateway ?? store.gateway)
+                .environmentObject(store)
+        }
+    }
+
+    private func handleScannedCode(_ rawValue: String) {
+        do {
+            try store.pair(usingQRCode: rawValue)
+            showsQRScanner = false
+        } catch {
+            showsQRScanner = false
+            store.lastError = error.localizedDescription
+        }
     }
 }
