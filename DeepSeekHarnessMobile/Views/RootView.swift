@@ -82,10 +82,24 @@ private struct RootNavigationHost: View, Equatable {
                 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // 朱小姐：首页 = 对话本体。启动时跳过 Workspace 列表页，直接打开会话。
+        // 会话列表在左划栏里（WorkspaceView 的 drawer）。没有历史会话（首次使用）
+        // 或连接还没建立时，先停在 Workspace，等 sessions 到了/连上了再重试。
         .task {
             if case .disconnected = store.gateway.state {
                 store.connectOnColdLaunchIfPaired()
             }
+            openPrimaryConversation()
+        }
+        // store 在本结构体里是"不被观察的引用"（见文件头注释），sessions/gateway
+        // 变化不会让 body 重算，onChange 收不到 —— 必须用 onReceive 直接订阅。
+        .onReceive(store.$sessions) { _ in
+            guard navigationPath.isEmpty else { return }
+            openPrimaryConversation()
+        }
+        .onReceive(store.gateway.$state) { state in
+            guard state.isConnected, navigationPath.isEmpty else { return }
+            openPrimaryConversation()
         }
         .onChange(of: navigationPath) { _, path in
             if path.isEmpty { store.resumeWorkspace() }
@@ -171,6 +185,30 @@ private struct RootNavigationHost: View, Equatable {
     private func navigate(to route: AppRoute) {
         guard navigationPath.last != route else { return }
         navigationPath.append(route)
+    }
+
+    /// 朱小姐：首页直接进对话。优先恢复上次在看的会话，否则取最近活动的那个；
+    /// 都没有（首次使用）就留在 Workspace 让用户点「新会话」。
+    /// 幂等：已在对话页/任务在跑时直接返回，多个触发源（task、sessions 变化、连接成功）
+    /// 同时命中也不会重复打开。
+    private func openPrimaryConversation() {
+        guard navigationPath.isEmpty, newConversationTask == nil else { return }
+        let sorted = store.sessions.sorted {
+            ($0.lastActivity ?? .distantPast) > ($1.lastActivity ?? .distantPast)
+        }
+        let target = store.sessions.first { $0.id == store.selectedSessionId } ?? sorted.first
+        guard let session = target else { return }
+        let header = conversationHeader(for: session)
+        newConversationTask = Task { @MainActor in
+            defer { newConversationTask = nil }
+            guard await store.prepareConversation(for: session), !Task.isCancelled else { return }
+            guard navigationPath.isEmpty else { return }
+            navigationPath = [.conversation(header)]
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            // 冷启动时网关可能刚连上，准备与激活需要分两步走（Live Activity 深链同款写法，激活是幂等的）。
+            await store.activatePreparedConversation(sessionID: header.sessionID)
+        }
     }
 
     private func openLiveActivityURL(_ url: URL) {

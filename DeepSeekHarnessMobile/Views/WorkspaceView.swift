@@ -22,6 +22,78 @@ struct WorkspaceView: View {
     @State private var drawerDragStart: CGFloat?
     @FocusState private var sessionSearchIsFocused: Bool
 
+    /// 朱小姐：会话列表按最后活动时间倒序，方便快速回到最近的对话。
+    private var sortedSessions: [SessionSummary] {
+        store.sessions
+            .filter { $0.id != store.selectedSessionId }
+            .sorted { a, b in (a.lastActivity ?? .distantPast) > (b.lastActivity ?? .distantPast) }
+    }
+
+    private func openSession(_ session: SessionSummary) {
+        onOpenSession(session)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.65))
+            .padding(.leading, 8)
+            .padding(.top, 14)
+            .padding(.bottom, 6)
+    }
+
+    private func drawerSessionRow(_ session: SessionSummary) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "bubble.left.and.bubble.right")
+                .font(.system(size: 16, weight: .medium))
+                .frame(width: 24)
+                .foregroundStyle(.white.opacity(0.6))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.title.truncatingToLength(40))
+                    .font(.system(size: 16))
+                HStack(spacing: 6) {
+                    if let lastActivity = session.lastActivity {
+                        Text(timeAgo(lastActivity))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.white.opacity(0.45))
+                    }
+                    if session.isRunning {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 5, height: 5)
+                        Text("运行中")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.green)
+                    }
+                    if session.hasUnread {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 6, height: 6)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            if session.id == store.selectedSessionId {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .frame(width: 20, height: 20)
+            }
+        }
+        .frame(height: 42)
+        .padding(.horizontal, 14)
+        .background(session.id == store.selectedSessionId ? Color.white.opacity(0.08) : Color.clear)
+        .cornerRadius(8)
+    }
+
+    /// 朱小姐：会话行里的「x 分钟前」，用系统相对时间格式化。
+    private func timeAgo(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.dateTimeStyle = .named
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let drawerWidth = min(geometry.size.width * 0.76, 360)
@@ -221,8 +293,9 @@ struct WorkspaceView: View {
                 Text("朱小姐").font(.system(size: 20, weight: .bold))
             }
             .padding(.leading, 12)
-            .padding(.bottom, 16)
+            .padding(.bottom, 12)
 
+            // 朱小姐：第一行直接就是「新会话」——最常用
             drawerItem("新会话", icon: {
                 Image(systemName: "square.and.pencil")
                     .font(.system(size: 20, weight: .medium))
@@ -242,6 +315,21 @@ struct WorkspaceView: View {
                     .font(.system(size: 20, weight: .medium))
                     .frame(width: 24)
             }, action: { selectDrawerItem(onScheduledTasks) })
+
+            // 会话列表（按最后活动时间倒序）
+            sectionHeader("会话")
+            VStack(spacing: 0) {
+                ForEach(sortedSessions) { session in
+                    drawerSessionRow(session)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            // 点一个会话 → 先关闭左划栏，再入栈对话页（Back 才回首页）
+                            closeDrawer()
+                            openSession(session)
+                        }
+                }
+            }
+
             Spacer(minLength: 0)
 
             // 朱小姐：⚙ 从顶栏搬进左划栏
@@ -321,7 +409,7 @@ struct WorkspaceView: View {
     }
 
     @ViewBuilder
-    private var authenticationMenu: some View {
+    private var _authenticationMenu: some View {
         GatewayAuthenticationMenu(
             gateway: store.gateway,
             onScan: {
@@ -336,7 +424,7 @@ struct WorkspaceView: View {
     }
 
     @ViewBuilder
-    private var settingsButton: some View {
+    private var _settingsButton: some View {
         headerButton(systemName: "gearshape.fill", accessibilityLabel: String(localized: "设置"), action: onSettings)
     }
 
@@ -1233,5 +1321,12 @@ private final class GatewayScannerController: UIViewController, AVCaptureMetadat
         didFinish = true
         stop()
         onFailure?(message)
+    }
+}
+
+// 朱小姐：左划栏会话行的标题截断（超出 40 字加省略号）
+extension String {
+    func truncatingToLength(_ maxLength: Int) -> String {
+        count > maxLength ? String(prefix(maxLength)) + "…" : self
     }
 }
