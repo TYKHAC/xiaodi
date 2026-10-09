@@ -53,7 +53,9 @@ struct SiriMicButton: View {
                     ring(scale: 1.35, opacity: 0.22, delay: 0.35)
                 }
 
-                // 底圆：闲着＝珍珠圆球，按住/播报时才切成渐变色
+                // 底圆：闲着＝珍珠圆球，按住/播报时才切成渐变色。
+                // 朱小姐：不放任何图标 —— 用户要的就是一颗纯圆球；
+                // 语音状态靠「变大 + 波纹 + 底色」表达，文字提示由 VoiceStateBadge 负责。
                 Group {
                     if isIdle {
                         PearlOrbView()
@@ -65,12 +67,7 @@ struct SiriMicButton: View {
                 .clipShape(Circle())
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1))
                 .shadow(color: shadowColor, radius: isRecording ? 14 : 6, y: 3)
-
-                // 图标
-                Image(systemName: symbolName)
-                    .font(.system(size: diameter * 0.42, weight: .semibold))
-                    .foregroundStyle(foreground)
-                    .symbolRenderingMode(.hierarchical)
+                .scaleEffect(orbScale)
             }
             .frame(width: diameter * 1.5, height: diameter * 1.5)
             .contentShape(Circle())
@@ -97,9 +94,14 @@ struct SiriMicButton: View {
                 }
         )
         .accessibilityLabel(String(localized: "按住说话", defaultValue: "按住说话"))
-        .accessibilityHint(String(localized: "长按麦克风说话，松开后发送", defaultValue: "长按麦克风说话，松开后发送"))
+        .accessibilityHint(String(localized: "长按说话，松开后发送", defaultValue: "长按说话，松开后发送"))
         .onAppear {
             if !reduceMotion { pulse = true }
+            orbScale = isIdle ? 1 : Self.activeScale
+        }
+        // 选中语音输入（进入聆听/识别/播报）→ 圆球弹大；回到空闲 → 弹回。
+        .onChange(of: isIdle) { _, idle in
+            setOrbScale(idle ? 1 : Self.activeScale)
         }
         .animation(
             reduceMotion ? nil : .easeInOut(duration: 0.22),
@@ -107,19 +109,27 @@ struct SiriMicButton: View {
         )
     }
 
+    // MARK: - 选中/录音中的圆球动效
+
+    /// 语音激活态的目标放大倍数（珍珠球从 54 → 约 63pt，明显但不挤）
+    private static let activeScale: CGFloat = 1.16
+
+    @State private var orbScale: CGFloat = 1
+
+    private func setOrbScale(_ target: CGFloat) {
+        if reduceMotion {
+            orbScale = target
+            return
+        }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.58)) {
+            orbScale = target
+        }
+    }
+
     // MARK: - 外观
 
-    private var symbolName: String {
-        if isSpeaking { return "speaker.wave.2.fill" }
-        if isTranscribing { return "mic.fill" }
-        return "mic"
-    }
-
-    private var foreground: Color {
-        if isRecording || isTranscribing || isSpeaking { return .white }
-        // 珍珠底是浅色，图标固定用石板灰，别跟着深色模式变白（会看不见）
-        return Color(red: 0.37, green: 0.44, blue: 0.59)
-    }
+    // 朱小姐：不放图标 —— 圆球本身（珍珠质感/激活渐变）就是全部视觉，
+    // 状态区分交给 scaleEffect(1.16) + 波纹 + VoiceStateBadge 文字。
 
     private var background: AnyShapeStyle {
         if isRecording || isTranscribing { return AnyShapeStyle(siriGradient) }

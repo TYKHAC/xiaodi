@@ -39,7 +39,9 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>允许 DshMobile 扫描 DeepSeek Harness WebUI 生成的设备配对二维码。</string>
+	<string>拍照发给朱小姐，或扫描 DeepSeek Harness WebUI 生成的设备配对二维码。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>从相册选择照片发给朱小姐分析；图片只在本次对话中使用，不保存到其他地方。</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>连接局域网中的 DeepSeek Harness Mobile Gateway。</string>
 	<key>NSMicrophoneUsageDescription</key>

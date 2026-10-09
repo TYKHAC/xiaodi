@@ -298,6 +298,25 @@ struct ConversationView: View {
                 sessionTitle: store.selectedSession?.title ?? String(localized: "session.new.fallback", defaultValue: "新建 DeepSeek Harness")
             )
         }
+        // 朱小姐：相机/相册展示修饰符必须挂 body 常在层。
+        // 第15轮前它们挂在 composerCard 链尾，而待命栏显示时 composerCard
+        // 整个不在视图树 → 点拍照/图库毫无反应（纯挂错层，非权限问题）。
+        .onChange(of: selectedPhotoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await importPhotos(items) }
+        }
+        .photosPicker(
+            isPresented: $showsPhotoPicker,
+            selection: $selectedPhotoItems,
+            maxSelectionCount: max(1, 20 - pendingImages.count),
+            matching: .images
+        )
+        .fullScreenCover(isPresented: $showsCameraCapture) {
+            CameraCapturePicker { image in
+                appendCameraImage(image)
+            }
+            .ignoresSafeArea()
+        }
     }
 
     private var conversationBackground: Color {
@@ -772,9 +791,9 @@ struct ConversationView: View {
         reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.25)
     }
 
-    // MARK: - 朱小姐：底部待命栏（相机 ｜ 珍珠语音 ｜ 键盘 ｜ 更多）
+    // MARK: - 朱小姐：底部待命栏（相机 ｜ 珍珠语音 ｜ 键盘）
 
-    /// 空闲且没有草稿时用四个圆键；一旦聚焦、有文字或有待发图片，就让位给输入框。
+    /// 空闲且没有草稿时用三个圆键；一旦聚焦、有文字或有待发图片，就让位给输入框。
     private var showsStandbyBar: Bool {
         !composerIsFocused && draft.isEmpty && pendingImages.isEmpty
     }
@@ -797,29 +816,6 @@ struct ConversationView: View {
             standbyKey(systemName: "keyboard", label: String(localized: "键盘")) {
                 composerIsFocused = true
             }
-
-            Spacer(minLength: 0)
-
-            Menu {
-                Button {
-                    openPhotoLibrary()
-                } label: {
-                    Label(String(localized: "从相册选择"), systemImage: "photo.on.rectangle.angled")
-                }
-                Button {
-                    openCamera()
-                } label: {
-                    Label(String(localized: "拍照"), systemImage: "camera")
-                }
-                Button {
-                    pasteFromClipboard()
-                } label: {
-                    Label(String(localized: "粘贴剪贴板"), systemImage: "doc.on.clipboard")
-                }
-            } label: {
-                standbyKeyBody(systemName: "plus")
-            }
-            .accessibilityLabel(String(localized: "更多"))
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 8)
@@ -1064,23 +1060,6 @@ struct ConversationView: View {
             // 只申请一次；系统只在 notDetermined 时弹框，之后不再打扰。
             // 不阻塞任何其他加载。
             Task { await store.voice.requestPermissionsIfNeeded() }
-        }
-        .onChange(of: selectedPhotoItems) { _, items in
-            guard !items.isEmpty else { return }
-            Task { await importPhotos(items) }
-        }
-        // 朱小姐：待命栏的相机/更多都能唤起相册与相机
-        .photosPicker(
-            isPresented: $showsPhotoPicker,
-            selection: $selectedPhotoItems,
-            maxSelectionCount: max(1, 20 - pendingImages.count),
-            matching: .images
-        )
-        .fullScreenCover(isPresented: $showsCameraCapture) {
-            CameraCapturePicker { image in
-                appendCameraImage(image)
-            }
-            .ignoresSafeArea()
         }
         .onChange(of: draft) { _, value in
             store.updateSlashCommandInput(value)
