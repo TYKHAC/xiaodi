@@ -282,3 +282,171 @@ struct DirectChatClient {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
+
+// MARK: - 生图 / 视频模型配置（模型配置中心 · 另两类）
+
+/// 三类模型配置里的生图/视频两类（语言类＝DirectConnectionConfig，第15轮已上）。
+/// 老规矩：非敏感配置进 UserDefaults，Key 进 Keychain。
+struct MediaModelConfig: Codable, Equatable {
+    var enabled: Bool
+    /// OpenAI 兼容 base URL，到 /v1 一级，例：https://api.example.com/v1
+    var baseURL: String
+    var model: String
+
+    static let imageDefaultsKey = "xiaodi.mediaImageConfig"
+    static let videoDefaultsKey = "xiaodi.mediaVideoConfig"
+    static let imageDefault = MediaModelConfig(enabled: false, baseURL: "", model: "")
+    static let videoDefault = MediaModelConfig(enabled: false, baseURL: "", model: "")
+
+    static func savedImage() -> MediaModelConfig { load(imageDefaultsKey) ?? imageDefault }
+    static func savedVideo() -> MediaModelConfig { load(videoDefaultsKey) ?? videoDefault }
+    func saveImage() { save(Self.imageDefaultsKey) }
+    func saveVideo() { save(Self.videoDefaultsKey) }
+
+    private static func load(_ key: String) -> MediaModelConfig? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(MediaModelConfig.self, from: data)
+    }
+
+    private func save(_ key: String) {
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        UserDefaults.standard.set(data, forKey: key)
+    }
+
+    private var trimmedBase: String {
+        var base = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") { base.removeLast() }
+        return base
+    }
+
+    /// OpenAI 兼容生图接口：POST {base}/images/generations
+    var imagesEndpoint: URL? {
+        guard !trimmedBase.isEmpty else { return nil }
+        return URL(string: trimmedBase + "/images/generations")
+    }
+}
+
+/// 生图/视频各自的 Keychain 槽位（和直连 Key 同一套 generic-password 做法）
+enum MediaAPIKeyStore {
+    private static let imageService = "com.clark.dshmobile.media-image-key"
+    private static let videoService = "com.clark.dshmobile.media-video-key"
+
+    private static func service(_ kind: MediaKeyKind) -> String {
+        switch kind {
+        case .image: return imageService
+        case .video: return videoService
+        }
+    }
+
+    static func load(_ kind: MediaKeyKind) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service(kind),
+            kSecAttrAccount as String: "default",
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data,
+              let value = String(data: data, encoding: .utf8),
+              !value.isEmpty else { return nil }
+        return value
+    }
+
+    static func save(_ kind: MediaKeyKind, value: String) throws {
+        let data = Data(value.trimmingCharacters(in: .whitespacesAndNewlines).utf8)
+        let base: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service(kind),
+            kSecAttrAccount as String: "default",
+        ]
+        let status = SecItemUpdate(base as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if status == errSecItemNotFound {
+            var add = base
+            add[kSecValueData as String] = data
+            let addStatus = SecItemAdd(add as CFDictionary, nil)
+            guard addStatus == errSecSuccess else { throw DirectKeychainStoreError(addStatus) }
+        } else {
+            guard status == errSecSuccess else { throw DirectKeychainStoreError(status) }
+        }
+    }
+
+    static func delete(_ kind: MediaKeyKind) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service(kind),
+            kSecAttrAccount as String: "default",
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
+
+enum MediaKeyKind {
+    case image
+    case video
+}
+
+struct DirectKeychainStoreError: LocalizedError {
+    let status: OSStatus
+    init(_ status: OSStatus) { self.status = status }
+    var errorDescription: String? {
+        (SecCopyErrorMessageString(status, nil) as String?) ?? "Keychain 错误 \(status)"
+    }
+}
+
+/// 生图客户端（OpenAI 兼容 images/generations）。
+/// 返回值是「可直接渲染的内容」：http(s) 图片链接，或 data:base64（中转常给这个）。
+struct DirectImageClient {
+    private struct GenRequest: Encodable {
+        let model: String
+        let prompt: String
+        let n: Int
+        let size: String?
+    }
+
+    private struct GenResponse: Decodable {
+        struct Datum: Decodable {
+            let url: String?
+            let b64_json: String?
+        }
+        let data: [Datum]
+    }
+
+    func generate(
+        config: MediaModelConfig,
+        apiKey: String,
+        prompt: String,
+        size: String? = nil
+    ) async throws -> String {
+        guard let endpoint = config.imagesEndpoint else {
+            throw DirectChatError.badEndpoint
+        }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 300
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(GenRequest(
+            model: config.model,
+            prompt: prompt,
+            n: 1,
+            size: size
+        ))
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw DirectChatError.server("响应不是 HTTP")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data.prefix(400), encoding: .utf8) ?? ""
+            throw DirectChatError.server("HTTP \(http.statusCode)：\(body.prefix(300))")
+        }
+        guard let parsed = try? JSONDecoder().decode(GenResponse.self, from: data),
+              let first = parsed.data.first else {
+            throw DirectChatError.server("响应里没有图片数据")
+        }
+        if let url = first.url, !url.isEmpty { return url }
+        if let b64 = first.b64_json, !b64.isEmpty { return "data:image/png;base64,\(b64)" }
+        throw DirectChatError.server("响应里没有 url 也没有 b64_json")
+    }
+}

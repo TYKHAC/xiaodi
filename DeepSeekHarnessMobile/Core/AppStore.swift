@@ -329,6 +329,47 @@ final class AppStore: ObservableObject {
     /// 直连设置页里的连接测试状态
     @Published var directTestState: DirectTestState?
 
+    /// 模型配置中心 · 生图模型（OpenAI 兼容 images/generations）
+    @Published var imageGenConfig: MediaModelConfig {
+        didSet { imageGenConfig.saveImage() }
+    }
+
+    /// 模型配置中心 · 视频模型（配置先落，调用接口后续接线）
+    @Published var videoGenConfig: MediaModelConfig {
+        didSet { videoGenConfig.saveVideo() }
+    }
+
+    /// 生图连通测试状态
+    @Published var imageGenTestState: DirectTestState?
+
+    func testImageGeneration() {
+        guard !imageGenConfig.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !imageGenConfig.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            imageGenTestState = .fail("先把接口地址和模型填上")
+            return
+        }
+        guard let apiKey = MediaAPIKeyStore.load(.image), !apiKey.isEmpty else {
+            imageGenTestState = .fail("还没填生图 Key —— 存进 Keychain 再测")
+            return
+        }
+        imageGenTestState = .testing
+        let config = imageGenConfig
+        Task { @MainActor in
+            do {
+                let content = try await DirectImageClient().generate(
+                    config: config,
+                    apiKey: apiKey,
+                    prompt: "a single glossy white pearl sphere on dark background, minimal product photo"
+                )
+                imageGenTestState = .ok(content.hasPrefix("data:")
+                    ? "✓ 已生成（内联图片）"
+                    : "✓ 已生成")
+            } catch {
+                imageGenTestState = .fail(error.localizedDescription)
+            }
+        }
+    }
+
     /// 无会话且开了直连 → 对话页渲染直连聊天页，而不是空态 hero
     var isDirectModeActive: Bool { selectedSessionId == nil && directConfig.enabled }
 
@@ -617,6 +658,8 @@ final class AppStore: ObservableObject {
         self.speakRepliesEnabled = preferences.speakRepliesEnabled
         self.messageFontScale = MessageFontScale.current
         self.directConfig = DirectConnectionConfig.saved
+        self.imageGenConfig = MediaModelConfig.savedImage()
+        self.videoGenConfig = MediaModelConfig.savedVideo()
         self.voice.speakReplies = preferences.speakRepliesEnabled
         // 注意：voice.onTranscribed 会闭包捕获 self，而 Swift 要求
         // 「所有存储属性都初始化完毕」之后才能捕获 self。

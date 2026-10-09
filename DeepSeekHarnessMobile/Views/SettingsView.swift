@@ -5,6 +5,9 @@ struct SettingsView: View {
     @State private var pendingPermission: DefaultPermissionChoice?
     // 直连 API Key 的编辑态：首次从 Keychain 读出（回显即在位，可改可清空）
     @State private var directAPIKey: String = DirectAPIKeyStore.load() ?? ""
+    // 模型配置中心：生图/视频各自的 Key 编辑态
+    @State private var mediaImageKey: String = MediaAPIKeyStore.load(.image) ?? ""
+    @State private var mediaVideoKey: String = MediaAPIKeyStore.load(.video) ?? ""
 
     private var selectedPresetName: String {
         guard let id = store.agentPresetDefault else { return String(localized: "未读取") }
@@ -167,6 +170,82 @@ struct SettingsView: View {
                 Text("直连模式（无电脑也能聊）")
             } footer: {
                 Text("开启后：没连上电脑时，对话页直接进直连聊天。Key 只存本机 Keychain，不出手机；连着电脑时照常走远程。")
+            }
+
+            Section {
+                Toggle("启用生图模型", isOn: $store.imageGenConfig.enabled)
+                TextField("接口地址（…/v1）", text: $store.imageGenConfig.baseURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                TextField("模型（如 flux2 / seedream）", text: $store.imageGenConfig.model)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("生图 Key", text: $mediaImageKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("保存 Key 到本机 Keychain") {
+                    do {
+                        let trimmed = mediaImageKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if trimmed.isEmpty {
+                            MediaAPIKeyStore.delete(.image)
+                        } else {
+                            try MediaAPIKeyStore.save(.image, value: trimmed)
+                        }
+                        store.imageGenTestState = nil
+                    } catch {
+                        store.lastError = error.localizedDescription
+                    }
+                }
+                Button {
+                    store.testImageGeneration()
+                } label: {
+                    HStack {
+                        Text("测试生图")
+                        Spacer()
+                        switch store.imageGenTestState {
+                        case nil: EmptyView()
+                        case .testing: ProgressView()
+                        case .ok(let reply): Text(reply).foregroundStyle(.green).lineLimit(1)
+                        case .fail(let reason): Text(reason).foregroundStyle(.red).lineLimit(2)
+                        }
+                    }
+                }
+                .disabled(store.imageGenTestState == .testing)
+            } header: {
+                Text("生图模型（OpenAI 兼容）")
+            } footer: {
+                Text("按 images/generations 格式请求；测试会真实生成一张图。Key 只存本机 Keychain。")
+            }
+
+            Section {
+                Toggle("启用视频模型", isOn: $store.videoGenConfig.enabled)
+                TextField("接口地址（…/v1）", text: $store.videoGenConfig.baseURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                TextField("模型（如 minimax-h3）", text: $store.videoGenConfig.model)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("视频 Key", text: $mediaVideoKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("保存 Key 到本机 Keychain") {
+                    do {
+                        let trimmed = mediaVideoKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if trimmed.isEmpty {
+                            MediaAPIKeyStore.delete(.video)
+                        } else {
+                            try MediaAPIKeyStore.save(.video, value: trimmed)
+                        }
+                    } catch {
+                        store.lastError = error.localizedDescription
+                    }
+                }
+            } header: {
+                Text("视频模型")
+            } footer: {
+                Text("视频接口各家差异大，先把配置存下；生成按钮随后接线。Key 只存本机 Keychain。")
             }
 
             Section("Mobile Gateway") {
