@@ -84,7 +84,7 @@ struct WorkspaceView: View {
                         Text("朱小姐")
                             .font(.system(size: 32, weight: .bold))
                         Text("你的专属代理")
-                            .font(.subheadline).foregroundStyle(.white.opacity(0.65))
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
                     .id("workspace-hero")
                     workspaceCard.id("workspace-card")
@@ -143,7 +143,7 @@ struct WorkspaceView: View {
             Image(systemName: store.speakRepliesEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                 .font(.system(size: 15, weight: .semibold))
                 .frame(width: 34, height: 34)
-                .background(Circle().fill(Color.white.opacity(0.12)))
+                .background(Circle().fill(Color.primary.opacity(0.12)))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(store.speakRepliesEnabled
@@ -203,7 +203,7 @@ struct WorkspaceView: View {
             Image(systemName: "chevron.down").font(.caption).foregroundStyle(.white.opacity(0.55))
         }
         .padding(16)
-        .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 15))
+        .background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 15))
         .overlay(RoundedRectangle(cornerRadius: 15).stroke(.white.opacity(0.14)))
         .contentShape(RoundedRectangle(cornerRadius: 15))
     }
@@ -235,7 +235,7 @@ struct WorkspaceView: View {
             .onSubmit { sessionSearchIsFocused = false }
         }
         .padding(.horizontal, 12).frame(height: 42)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 13))
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 13))
         .overlay(RoundedRectangle(cornerRadius: 13).stroke(.white.opacity(0.1)))
     }
 
@@ -243,7 +243,7 @@ struct WorkspaceView: View {
         Text("暂无已知会话。连接服务后创建第一个任务。")
             .font(.subheadline).foregroundStyle(.white.opacity(0.5))
             .frame(maxWidth: .infinity, alignment: .leading).padding(18)
-            .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 15))
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 15))
     }
 
     private var displayedSessions: [SessionSummary] {
@@ -344,7 +344,7 @@ struct WorkspaceView: View {
         HStack(spacing: 10) {
             Image(systemName: "plus").font(.system(size: 15, weight: .semibold))
                 .frame(width: 28, height: 28)
-                .background(.white.opacity(0.1), in: Circle())
+                .background(Color.primary.opacity(0.1), in: Circle())
             Text("新建会话").font(.headline)
         }
         .frame(maxWidth: .infinity).frame(height: 38)

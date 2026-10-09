@@ -5,6 +5,9 @@ protocol AppPreferences: AnyObject {
     var selectedWorkspaceID: String? { get set }
     /// 小弟：是否语音播报助手回答。默认关 —— 语音输出很吵，让用户自己开。
     var speakRepliesEnabled: Bool { get set }
+    /// 朱小姐：启动时是否自动连电脑（远程模式手动开 —— 用户 2026-10-09 明确要求：
+    /// 没主动开远程时不要自己连、更不要弹"连接失败"）。默认关。
+    var remoteAutoConnectEnabled: Bool { get set }
 
     func loadSessions() -> [SessionSummary]
     func saveSessions(_ sessions: [SessionSummary])
@@ -12,7 +15,8 @@ protocol AppPreferences: AnyObject {
 }
 
 final class UserDefaultsAppPreferences: AppPreferences {
-    static let defaultEndpoint = "ws://127.0.0.1:3080/ws/mobile"
+    // 朱小姐：端口修正 —— 真实 mobile-gateway 在 3081（3080 是老配置，连了必失败）
+    static let defaultEndpoint = "ws://127.0.0.1:3081/ws/mobile"
 
     private enum Key {
         static let endpoint = "gateway.endpoint"
@@ -22,6 +26,8 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let manuallyPositionedSessionIDs = "gateway.manuallyPositionedSessionIds"
         // 小弟：播报开关。不注册默认值时不存在 → 用 false（关闭）兜底。
         static let speakRepliesEnabled = "xiaodi.speakRepliesEnabled"
+        // 朱小姐：启动自动连接。默认 false —— 远程要用户主动开。
+        static let remoteAutoConnectEnabled = "xiaodi.remoteAutoConnect"
     }
 
     private let userDefaults: UserDefaults
@@ -52,6 +58,11 @@ final class UserDefaultsAppPreferences: AppPreferences {
     var speakRepliesEnabled: Bool {
         get { userDefaults.bool(forKey: key(Key.speakRepliesEnabled)) }
         set { userDefaults.set(newValue, forKey: key(Key.speakRepliesEnabled)) }
+    }
+
+    var remoteAutoConnectEnabled: Bool {
+        get { userDefaults.bool(forKey: key(Key.remoteAutoConnectEnabled)) }
+        set { userDefaults.set(newValue, forKey: key(Key.remoteAutoConnectEnabled)) }
     }
 
     func loadSessions() -> [SessionSummary] {

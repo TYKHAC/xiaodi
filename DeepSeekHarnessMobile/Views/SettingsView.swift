@@ -248,7 +248,10 @@ struct SettingsView: View {
                 Text("视频接口各家差异大，先把配置存下；生成按钮随后接线。Key 只存本机 Keychain。")
             }
 
-            Section("Mobile Gateway") {
+            Section {
+                Toggle(isOn: $store.remoteAutoConnectEnabled) {
+                    Label("启动时自动连接电脑", systemImage: "power")
+                }
                 TextField("ws://host:3081/ws/mobile", text: $store.endpoint)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
@@ -269,10 +272,14 @@ struct SettingsView: View {
                     }
                 }
                 Button("Ping 网关") { store.gateway.ping() }
+            } header: {
+                Text("Mobile Gateway")
+            } footer: {
+                Text("远程模式是手动的：开关关闭时，App 启动不会连电脑、也不会弹连接失败；要远程就连一下（或左划栏 → 配对设备）。不连时用直连模式照样聊。")
             }
 
             if let host = store.hostSnapshot {
-                Section("DSH Host") {
+                Section("电脑端信息") {
                     LabeledContent("版本", value: host.version ?? "—")
                     LabeledContent("Provider", value: host.provider ?? "—")
                     LabeledContent("Model", value: host.model ?? "—")

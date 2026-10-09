@@ -13,8 +13,45 @@ enum DSHColor {
     static let success = Color(red: 0.18, green: 0.72, blue: 0.36)
 }
 
+/// 朱小姐首页背景 —— 珍珠光晕（用户要求去掉 DeepSeek 落地页的点阵样式）。
+/// 浅色：系统底 + 三团珍珠色柔光；深色：藏蓝底 + 淡彩光晕。
+/// 全部纯代码渐变，不依赖素材，也不用 Metal。
 struct DeepOceanBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
-        HarnessAnimatedBackground()
+        ZStack {
+            if colorScheme == .dark {
+                DSHColor.navy
+                pearlBlobs.opacity(0.24)
+            } else {
+                Color(uiColor: .systemBackground)
+                pearlBlobs.opacity(0.6)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private var pearlBlobs: some View {
+        ZStack {
+            RadialGradient(
+                colors: [Color(red: 0.99, green: 0.90, blue: 0.95), .clear],
+                center: UnitPoint(x: 0.86, y: 0.06),
+                startRadius: 0,
+                endRadius: 330
+            )
+            RadialGradient(
+                colors: [Color(red: 0.86, green: 0.92, blue: 1.00), .clear],
+                center: UnitPoint(x: 0.08, y: 0.28),
+                startRadius: 0,
+                endRadius: 300
+            )
+            RadialGradient(
+                colors: [Color(red: 0.87, green: 0.98, blue: 0.94), .clear],
+                center: UnitPoint(x: 0.78, y: 0.94),
+                startRadius: 0,
+                endRadius: 340
+            )
+        }
     }
 }

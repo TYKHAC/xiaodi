@@ -314,6 +314,12 @@ final class AppStore: ObservableObject {
         }
     }
 
+    /// 朱小姐：启动时自动连接电脑。**默认关** —— 用户 2026-10-09 明确要求：
+    /// 没主动开远程就不许自己连、更不许弹"连接失败"。手动连接不受此开关影响。
+    @Published var remoteAutoConnectEnabled: Bool {
+        didSet { preferences.remoteAutoConnectEnabled = remoteAutoConnectEnabled }
+    }
+
     /// 朱小姐：消息字号倍数（设置页改；对话页 dynamicTypeSize + Markdown 主题同时生效）
     @Published var messageFontScale: Double {
         didSet { MessageFontScale.set(messageFontScale) }
@@ -759,6 +765,7 @@ final class AppStore: ObservableObject {
         // 注意顺序：先读持久值赋给 @Published（触发 didSet → 同步 voice.speakReplies），
         // 再接回调。反了的话第一次播报会用错开关。
         self.speakRepliesEnabled = preferences.speakRepliesEnabled
+        self.remoteAutoConnectEnabled = preferences.remoteAutoConnectEnabled
         self.messageFontScale = MessageFontScale.current
         self.directConfig = DirectConnectionConfig.saved
         self.imageGenConfig = MediaModelConfig.savedImage()
@@ -1094,8 +1101,11 @@ final class AppStore: ObservableObject {
     func connectOnColdLaunchIfPaired() {
         guard !hasHandledColdLaunchConnection else { return }
         hasHandledColdLaunchConnection = true
+        // 朱小姐：远程模式手动开 —— 没开就什么都不做，也绝不弹"尚未连接/连接失败"。
+        guard remoteAutoConnectEnabled else { return }
         guard gateway.hasStoredCredential(for: endpoint) else {
-            lastError = String(localized: "尚未连接到电脑。请打开左划栏 → 配对设备，扫码或手动输入地址进行连接。")
+            // 旧版这里会 lastError 弹窗（每次冷启动都"尚未连接到电脑"）—— 去掉，
+            // 入口在左划栏 → 配对设备 / 设置 → 连接。
             return
         }
         connect()
