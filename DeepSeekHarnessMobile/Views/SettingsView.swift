@@ -41,8 +41,8 @@ struct SettingsView: View {
 
     static func modelDisplayName(_ id: String) -> String {
         switch id {
-        case "deepseek-chat": return "DeepSeek Chat"
-        case "deepseek-reasoner": return "DeepSeek Reasoner"
+        case "deepseek-chat": return "聊天模型"
+        case "deepseek-reasoner": return "推理模型"
         default: return id
         }
     }
@@ -130,11 +130,11 @@ struct SettingsView: View {
                 Toggle(isOn: $store.directConfig.enabled) {
                     Label("启用直连模式", systemImage: "antenna.radiowaves.left.and.right")
                 }
-                TextField("接口地址（如 https://api.deepseek.com/v1）", text: $store.directConfig.baseURL)
+                TextField("接口地址（如 https://your-relay.com/v1）", text: $store.directConfig.baseURL)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
                     .autocorrectionDisabled()
-                TextField("模型（如 deepseek-chat）", text: $store.directConfig.model)
+                TextField("模型（填你的模型名）", text: $store.directConfig.model)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 SecureField("API Key", text: $directAPIKey)
@@ -249,7 +249,7 @@ struct SettingsView: View {
             }
 
             Section("Mobile Gateway") {
-                TextField("ws://host:3080/ws/mobile", text: $store.endpoint)
+                TextField("ws://host:3081/ws/mobile", text: $store.endpoint)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
                     .autocorrectionDisabled()

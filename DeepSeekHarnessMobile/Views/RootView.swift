@@ -13,7 +13,7 @@ struct RootView: View {
             .equatable()
             // 直接观察当前 AppStore，避免外层主机容器漏掉外观设置更新。
             .preferredColorScheme(store.interfaceStyle.colorScheme)
-            .alert("DeepSeek Harness", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
+            .alert("朱小姐", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
                 Button(String(localized: "好"), role: .cancel) { store.lastError = nil }
             } message: { Text(store.lastError ?? "") }
             .onChange(of: scenePhase) { _, phase in
@@ -379,7 +379,7 @@ private struct RootNavigationHost: View, Equatable {
                   !Task.isCancelled else { return }
             let header = ConversationNavigationHeader(
                 sessionID: store.selectedSessionId,
-                title: String(localized: "session.new.fallback", defaultValue: "新建 DeepSeek Harness"),
+                title: String(localized: "session.new.fallback", defaultValue: "新会话"),
                 agentPresetTitle: agentPresetDisplayName(for: store.agentPresetDefault)
             )
             primaryChoiceMade = true
@@ -435,7 +435,7 @@ private struct RootNavigationHost: View, Equatable {
             ?? session?.agentPreset ?? store.agentPresetDefault
         return ConversationNavigationHeader(
             sessionID: session?.id,
-            title: session?.title ?? String(localized: "session.new.fallback", defaultValue: "新建 DeepSeek Harness"),
+            title: session?.title ?? String(localized: "session.new.fallback", defaultValue: "新会话"),
             agentPresetTitle: agentPresetDisplayName(for: presetID)
         )
     }

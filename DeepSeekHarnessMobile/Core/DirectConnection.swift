@@ -16,15 +16,15 @@ import Security
 
 struct DirectConnectionConfig: Codable, Equatable {
     var enabled: Bool
-    /// OpenAI 兼容 base URL，例：https://api.deepseek.com/v1
+    /// OpenAI 兼容 base URL（朱小姐：默认留空，用户填自己的中转/服务商地址）
     var baseURL: String
     var model: String
 
     static let defaultsKey = "xiaodi.directConfig"
     static let `default` = DirectConnectionConfig(
         enabled: false,
-        baseURL: "https://api.deepseek.com/v1",
-        model: "deepseek-chat"
+        baseURL: "",
+        model: ""
     )
 
     static var saved: DirectConnectionConfig {
@@ -152,7 +152,7 @@ enum DirectChatError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .badEndpoint: return "接口地址不合法（形如 https://api.deepseek.com/v1）"
+        case .badEndpoint: return "接口地址不合法（形如 https://your-relay.com/v1）"
         case .server(let detail): return detail
         }
     }

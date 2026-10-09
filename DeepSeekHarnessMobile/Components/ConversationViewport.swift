@@ -2249,7 +2249,8 @@ final class StreamingAssistantCell: StableSelfSizingCollectionViewCell {
     static let reuseIdentifier = "StreamingAssistantCell"
 
     private let whaleView: UIImageView = {
-        let view = UIImageView(image: UIImage(named: "DeepSeekWhale")?.withRenderingMode(.alwaysTemplate))
+        // 朱小姐：去 DeepSeek 化 —— 鲸鱼素材 → 系统水波纹符号
+        let view = UIImageView(systemSymbolName: "water.waves", configuration: nil)
         view.tintColor = .secondaryLabel
         view.contentMode = .scaleAspectFit
         view.translatesAutoresizingMaskIntoConstraints = false

@@ -295,7 +295,7 @@ struct ConversationView: View {
         .sheet(isPresented: $showsSessionStats) {
             SessionStatsSheet(
                 snapshot: store.selectedSessionStatsSnapshot,
-                sessionTitle: store.selectedSession?.title ?? String(localized: "session.new.fallback", defaultValue: "新建 DeepSeek Harness")
+                sessionTitle: store.selectedSession?.title ?? String(localized: "session.new.fallback", defaultValue: "新会话")
             )
         }
         // 朱小姐：相机/相册展示修饰符必须挂 body 常在层。
@@ -596,9 +596,12 @@ struct ConversationView: View {
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            DeepSeekWhaleIcon(size: 52).foregroundStyle(DSHColor.ocean)
-            Text("操作远端 DSH Agent").font(.title3.weight(.semibold))
-            Text("发送任务后，工具调用、推理进度和最终回复会通过 Mobile Gateway 实时返回。")
+            // 朱小姐：去 DeepSeek 化 —— 鲸鱼图 → 品牌水波纹（和抽屉/直连页同一视觉语言）
+            Image(systemName: "water.waves")
+                .font(.system(size: 44, weight: .light))
+                .foregroundStyle(DSHColor.ocean)
+            Text("朱小姐 · 待命").font(.title3.weight(.semibold))
+            Text("发送任务后，工具调用、推理进度和最终回复会实时返回。")
                 .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -1767,7 +1770,7 @@ struct ConversationView: View {
         guard let selection = currentModelSelection else { return nil }
         return modelGroups.first(where: { $0.id == selection.provider })?.models.first(where: { $0.id == selection.model })
     }
-    private var currentModelTitle: String { currentModelItem?.name ?? currentModelSelection?.model ?? "DeepSeek Agent" }
+    private var currentModelTitle: String { currentModelItem?.name ?? currentModelSelection?.model ?? "朱小姐" }
     private var currentEfforts: [GatewayReasoningEffort] { currentModelItem?.reasoning?.efforts ?? [] }
     private var currentEffortTitle: String? {
         guard let id = currentModelSelection?.reasoningEffort else { return nil }
@@ -1775,8 +1778,8 @@ struct ConversationView: View {
     }
     private func modelTitle(for id: String) -> String {
         switch id {
-        case "deepseek-chat": return "DeepSeek Chat"
-        case "deepseek-reasoner": return "DeepSeek Reasoner"
+        case "deepseek-chat": return "聊天模型"
+        case "deepseek-reasoner": return "推理模型"
         default: return id
         }
     }
@@ -3647,7 +3650,9 @@ struct ConversationRow: View {
         case .assistant:
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 9) {
-                    DeepSeekWhaleIcon(size: 26).foregroundStyle(.primary)
+                    Image(systemName: "water.waves")
+                        .font(.system(size: 22, weight: .light))
+                        .foregroundStyle(.primary)
                     Text(item.title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)

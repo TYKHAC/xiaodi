@@ -75,15 +75,10 @@ struct ConnectionDot: View {
 struct HarnessMark: View {
     var body: some View {
         HStack(spacing: 7) {
-            DeepSeekWhaleIcon(size: 27)
-            Text("deepseek").font(.system(size: 22, weight: .semibold, design: .rounded))
-            Text("HARNESS")
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .padding(.horizontal, 5).padding(.vertical, 3)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .stroke(Color.white, lineWidth: 1)
-                }
+            // 朱小姐：去 DeepSeek 化 —— 品牌锁定改为「水波纹 + 朱小姐」
+            Image(systemName: "water.waves")
+                .font(.system(size: 24, weight: .semibold))
+            Text("朱小姐").font(.system(size: 22, weight: .bold, design: .rounded))
         }
     }
 }
@@ -92,11 +87,10 @@ struct DeepSeekWhaleIcon: View {
     var size: CGFloat
 
     var body: some View {
-        Image("DeepSeekWhale")
-            .renderingMode(.template)
-            .resizable()
-            .scaledToFit()
-            .frame(width: size, height: size * 0.743)
+        // 朱小姐：不再引用 DeepSeek 鲸鱼素材；保留壳子供旧调用点安全使用
+        Image(systemName: "water.waves")
+            .font(.system(size: size * 0.9, weight: .light))
+            .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
 }
