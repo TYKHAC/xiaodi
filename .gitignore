@@ -36,3 +36,5 @@ captures/
 !.env.example
 _xcodebuild*.zip
 _log*/
+_*.zip
+_log*/
