@@ -141,6 +141,16 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
+          # 先显式链出 KMP 模拟器框架（run29 教训：工程内脚本阶段在模拟器轮
+          # 没把 framework 产出，ld 直接报 search path not found → swiftc 找不到模块）。
+          # 显式跑一遍带可见输出：任务名错/目标缺都能在日志里一眼看到。
+          if [ -z "${ANDROID_HOME:-}" ]; then
+            export ANDROID_HOME="${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}"
+          fi
+          chmod +x ./gradlew
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --console=plain
+          echo "--- 模拟器框架目录 ---"
+          ls -la shared/build/bin/iosSimulatorArm64/ || true
           xcodebuild \
             -project DeepSeekHarnessMobile.xcodeproj \
             -scheme DeepSeekHarnessMobile \
