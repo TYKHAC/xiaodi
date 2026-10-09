@@ -7,6 +7,9 @@
 //
 //  断连写入不丢：capture 失败进本地队列，恢复后可一键补投。
 //
+//  ⚠️ 编译坑（第20轮教训）：List 里塞大段复合表达式会触发
+//  "unable to type-check in reasonable time" —— 必须拆成小节 computed var。
+//
 
 import SwiftUI
 
@@ -33,94 +36,127 @@ struct BrainBridgeView: View {
                     .foregroundStyle(.red)
             }
 
-            // ── 写：记入大脑 ──
-            Section {
-                TextEditor(text: $draft)
-                    .frame(minHeight: 96)
-                TextField("标签（逗号分隔，如 朱小姐,进度）", text: $tagsText)
-                    .textInputAutocapitalization(.never)
-                Button {
-                    capture()
-                } label: {
-                    HStack {
-                        Text("记入大脑")
-                        Spacer()
-                        if isCapturing { ProgressView() }
-                    }
-                }
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCapturing)
-                if let captureTip {
-                    Text(captureTip)
-                        .font(.caption)
-                        .foregroundStyle(captureTip.hasPrefix("✓") ? .green : .orange)
-                }
-            } header: {
-                Text("捕获（写入 90-inbox）")
-            } footer: {
-                Text(store.brainPending.isEmpty
-                     ? "离线时自动排队，不丢；联网后可补投。"
-                     : "离线队列 \(store.brainPending.count) 条 —— 下面补投。")
-            }
+            captureSection
 
-            // ── 离线队列 ──
             if !store.brainPending.isEmpty {
-                Section("离线队列") {
-                    ForEach(store.brainPending) { item in
-                        Text(String(item.text.prefix(60)) + (item.text.count > 60 ? "…" : ""))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Button("全部补投（\(store.brainPending.count) 条）") {
-                        store.flushBrainQueue()
-                    }
-                }
+                queueSection
             }
 
-            // ── 读：搜大脑 ──
-            Section {
-                HStack {
-                    TextField("搜索大脑…（如：直连模式 决策）", text: $query)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.search)
-                        .onSubmit { search() }
-                    if isSearching {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                ForEach(hits) { hit in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(hit.h.isEmpty ? hit.p : hit.h)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(2)
-                        Text(hit.t.replacingOccurrences(of: "\n", with: " "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(4)
-                        Text(hit.p)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(1)
-                    }
-                    .padding(.vertical, 2)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        UIPasteboard.general.string = hit.t
-                        captureTip = "✓ 片段已复制"
-                    }
-                }
-            } header: {
-                Text("检索（读大脑）")
-            } footer: {
-                Text("点结果=复制原文片段。数据来自电脑大脑的实时索引，不是过期快照。")
-            }
+            searchSection
         }
         .navigationTitle("大脑")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { store.flushBrainQueue() }
+    }
+
+    // MARK: - 写：捕获
+
+    private var captureSection: some View {
+        Section {
+            TextEditor(text: $draft)
+                .frame(minHeight: 96)
+            TextField("标签（逗号分隔，如 朱小姐,进度）", text: $tagsText)
+                .textInputAutocapitalization(.never)
+            Button {
+                capture()
+            } label: {
+                HStack {
+                    Text("记入大脑")
+                    Spacer()
+                    if isCapturing { ProgressView() }
+                }
+            }
+            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCapturing)
+            if let captureTip {
+                Text(captureTip)
+                    .font(.caption)
+                    .foregroundStyle(captureTip.hasPrefix("✓") ? Color.green : Color.orange)
+            }
+        } header: {
+            Text("捕获（写入 90-inbox）")
+        } footer: {
+            Text(queueFooter)
+        }
+    }
+
+    private var queueFooter: String {
+        if store.brainPending.isEmpty {
+            return "离线时自动排队，不丢；联网后可补投。"
+        }
+        return "离线队列 \(store.brainPending.count) 条 —— 下面补投。"
+    }
+
+    // MARK: - 离线队列
+
+    private var queueSection: some View {
+        Section("离线队列") {
+            ForEach(store.brainPending) { item in
+                Text(previewText(item.text))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Button("全部补投（\(store.brainPending.count) 条）") {
+                store.flushBrainQueue()
+            }
+        }
+    }
+
+    private func previewText(_ text: String) -> String {
+        text.count > 60 ? String(text.prefix(60)) + "…" : text
+    }
+
+    // MARK: - 读：检索
+
+    private var searchSection: some View {
+        Section {
+            HStack {
+                TextField("搜索大脑…（如：直连模式 决策）", text: $query)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .onSubmit { search() }
+                if isSearching {
+                    ProgressView()
+                } else {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            ForEach(hits) { hit in
+                hitRow(hit)
+            }
+        } header: {
+            Text("检索（读大脑）")
+        } footer: {
+            Text("点结果=复制原文片段。数据来自电脑大脑的实时索引，不是过期快照。")
+        }
+    }
+
+    private func hitRow(_ hit: BrainHit) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(hitTitle(hit))
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(2)
+            Text(hit.t.replacingOccurrences(of: "\n", with: " "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(4)
+            Text(hit.p)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            UIPasteboard.general.string = hit.t
+            captureTip = "✓ 片段已复制"
+        }
+    }
+
+    private func hitTitle(_ hit: BrainHit) -> String {
+        let heading = (hit.h ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return heading.isEmpty ? hit.p : heading
     }
 
     // MARK: - 动作
