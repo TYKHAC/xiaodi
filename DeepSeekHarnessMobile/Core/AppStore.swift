@@ -467,8 +467,8 @@ final class AppStore: ObservableObject {
         UserDefaults.standard.set(data, forKey: Self.brainQueueKey)
     }
 
-    private func loadBrainQueue() -> [BrainCaptureItem] {
-        guard let data = UserDefaults.standard.data(forKey: Self.brainQueueKey),
+    private static func loadBrainQueue() -> [BrainCaptureItem] {
+        guard let data = UserDefaults.standard.data(forKey: brainQueueKey),
               let list = try? JSONDecoder().decode([BrainCaptureItem].self, from: data) else { return [] }
         return list
     }
@@ -763,7 +763,7 @@ final class AppStore: ObservableObject {
         self.directConfig = DirectConnectionConfig.saved
         self.imageGenConfig = MediaModelConfig.savedImage()
         self.videoGenConfig = MediaModelConfig.savedVideo()
-        self.brainPending = loadBrainQueue()
+        self.brainPending = Self.loadBrainQueue()
         self.voice.speakReplies = preferences.speakRepliesEnabled
         // 注意：voice.onTranscribed 会闭包捕获 self，而 Swift 要求
         // 「所有存储属性都初始化完毕」之后才能捕获 self。
