@@ -104,6 +104,23 @@ struct SettingsView: View {
                 Text("与 WebUI 使用同一份部署级设置。修改只影响之后新建的会话，运行中的会话保持启动时的配置。")
             }
 
+            Section {
+                Picker("消息字号", selection: $store.messageFontScale) {
+                    Text("较小").tag(0.85)
+                    Text("标准").tag(1.0)
+                    Text("较大").tag(1.18)
+                    Text("最大").tag(1.4)
+                }
+                .pickerStyle(.segmented)
+                Text("朱小姐正在整理今天的学习笔记，稍后会贴到大脑里。")
+                    .font(.system(size: 15 * store.messageFontScale))
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("文字大小")
+            } footer: {
+                Text("只影响对话里消息正文的字号；系统「更大文字」设置也依然有效。")
+            }
+
             Section("Mobile Gateway") {
                 TextField("ws://host:3080/ws/mobile", text: $store.endpoint)
                     .textInputAutocapitalization(.never)

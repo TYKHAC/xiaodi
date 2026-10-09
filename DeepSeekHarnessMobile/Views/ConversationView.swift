@@ -272,6 +272,9 @@ struct ConversationView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // 朱小姐：字号设置。Markdown 正文走主题（上面已乘倍数），
+        // 这里管 UIKit 那条路（ConversationViewport 用 preferredFont(.body)，靠 trait 缩放）。
+        .dynamicTypeSize(Self.messageTypeSize(for: store.messageFontScale))
         .ignoresSafeArea(.container, edges: .bottom)
         .background {
             WindowBottomSafeAreaReader(bottomInset: $bottomSafeAreaInset)
@@ -1366,6 +1369,16 @@ struct ConversationView: View {
             }
             pendingImages.append(image)
             acceptedBytes += image.data.count
+        }
+    }
+
+    /// 朱小姐：字号倍数 → 系统动态字号档位（large = iOS 默认）。
+    private static func messageTypeSize(for scale: Double) -> DynamicTypeSize {
+        switch scale {
+        case ..<0.95: return .small
+        case ..<1.1: return .large
+        case ..<1.3: return .xLarge
+        default: return .xxLarge
         }
     }
 
@@ -3934,7 +3947,8 @@ private extension Theme {
             .text {
                 ForegroundColor(.primary)
                 BackgroundColor(nil)
-                FontSize(compact ? 13 : 17)
+                // 朱小姐：消息字号设置在这里落地（绝对磅值，dynamicTypeSize 影响不到它）
+                FontSize(Double(compact ? 13 : 17) * MessageFontScale.current)
             }
             .code {
                 FontFamilyVariant(.monospaced)
@@ -3965,7 +3979,7 @@ private extension Theme {
                             .fixedSize(horizontal: true, vertical: true)
                             .markdownTextStyle {
                                 FontFamilyVariant(.monospaced)
-                                FontSize(compact ? 11 : 13)
+                                FontSize(Double(compact ? 11 : 13) * MessageFontScale.current)
                             }
                     }
                     // A horizontal ScrollView has no useful UIKit intrinsic

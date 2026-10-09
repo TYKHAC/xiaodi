@@ -314,6 +314,11 @@ final class AppStore: ObservableObject {
         }
     }
 
+    /// 朱小姐：消息字号倍数（设置页改；对话页 dynamicTypeSize + Markdown 主题同时生效）
+    @Published var messageFontScale: Double {
+        didSet { MessageFontScale.set(messageFontScale) }
+    }
+
     /// 「这一轮是语音发起的」—— 用来决定 turn/end 时要不要念
     @Published private(set) var lastTurnWasVoice: Bool = false
 
@@ -580,6 +585,7 @@ final class AppStore: ObservableObject {
         // 注意顺序：先读持久值赋给 @Published（触发 didSet → 同步 voice.speakReplies），
         // 再接回调。反了的话第一次播报会用错开关。
         self.speakRepliesEnabled = preferences.speakRepliesEnabled
+        self.messageFontScale = MessageFontScale.current
         self.voice.speakReplies = preferences.speakRepliesEnabled
         // 注意：voice.onTranscribed 会闭包捕获 self，而 Swift 要求
         // 「所有存储属性都初始化完毕」之后才能捕获 self。

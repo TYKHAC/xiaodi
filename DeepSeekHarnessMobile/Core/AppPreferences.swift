@@ -69,3 +69,19 @@ final class UserDefaultsAppPreferences: AppPreferences {
         userDefaults.removeObject(forKey: key(Key.manuallyPositionedSessionIDs))
     }
 }
+
+/// 朱小姐：消息字号倍数（1.0 = 标准）。
+/// 刻意用全局 UserDefaults key、不走 gateway profile 命名空间 ——
+/// Markdown 主题和 ConversationView 都直接读它，必须两边看到同一个值。
+enum MessageFontScale {
+    static let key = "xiaodi.messageFontScale"
+
+    static var current: Double {
+        let raw = UserDefaults.standard.double(forKey: key)
+        return raw > 0 ? raw : 1.0
+    }
+
+    static func set(_ value: Double) {
+        UserDefaults.standard.set(value, forKey: key)
+    }
+}

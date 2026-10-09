@@ -117,13 +117,13 @@ private struct RootNavigationHost: View, Equatable {
         }
         // store 在本结构体里是"不被观察的引用"（见文件头注释），sessions/gateway
         // 变化不会让 body 重算，onChange 收不到 —— 必须用 onReceive 直接订阅。
+        // 路由判断（是否占位、是否已选过）由 openPrimaryConversation 内部把关：
+        // 无会话时先进对话 hero，真实会话到达后要允许替换它。
         .onReceive(store.$sessions) { _ in
-            guard navigationPath.isEmpty else { return }
             openPrimaryConversation()
         }
         .onReceive(store.gateway.$state) { state in
-            guard state.isConnected, navigationPath.isEmpty else { return }
-            openPrimaryConversation()
+            if state.isConnected { openPrimaryConversation() }
         }
         .onChange(of: navigationPath) { _, path in
             if path.isEmpty {
@@ -442,13 +442,27 @@ private struct RootNavigationHost: View, Equatable {
 
     /// 朱小姐：首页直接进对话。优先恢复上次在看的会话，否则取最近活动的那个；
     /// 都没有（首次使用）就留在 Workspace 让用户点「新会话」。
+    /// 自动接管只允许替换"占位"路由：根列表页，或无会话的对话 hero。
+    /// 真实会话绝不被打断。
+    private var currentRouteIsPlaceholder: Bool {
+        guard let last = navigationPath.last else { return true }
+        if case .conversation(let header) = last, header.sessionID == nil { return true }
+        return false
+    }
+
     /// 幂等：已在对话页/任务在跑时直接返回，多个触发源（task、sessions 变化、连接成功）
     /// 同时命中也不会重复打开。
     private func openPrimaryConversation() {
-        guard !primaryChoiceMade, navigationPath.isEmpty, newConversationTask == nil else { return }
+        guard !primaryChoiceMade, currentRouteIsPlaceholder, newConversationTask == nil else { return }
         let sorted = store.sessions.sorted { $0.lastActivity > $1.lastActivity }
         let target = store.sessions.first { $0.id == store.selectedSessionId } ?? sorted.first
-        guard let session = target else { return }
+        guard let session = target else {
+            // 用户要求「打开就是对话」：一个会话都没有（还没连上/全新安装）也进对话，
+            // 空态 hero 由 ConversationView 渲染。连上后真实会话到达会自动替换进来
+            // （这里刻意不设 primaryChoiceMade —— 真会话来了还要能接管）。
+            navigationPath = [.conversation(conversationHeader(for: nil))]
+            return
+        }
         let header = conversationHeader(for: session)
         newConversationTask = Task { @MainActor in
             defer { newConversationTask = nil }
