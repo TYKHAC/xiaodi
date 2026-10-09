@@ -132,6 +132,72 @@ jobs:
           rm -rf Payload
           ls -la xiaodi-unsigned.ipa
 
+      # ── 朱小姐：视觉自查（Agent 看得见手机效果）──────────────────────
+      # Agent 没有真机，浅色白字这类问题只能靠截图自查。用模拟器把 App
+      # 跑起来截首页（浅/深两套），截图作为 artifact 回传给 Agent 直接看。
+      # ipa 不受影响：模拟器版走 iphonesimulator SDK，不进 ipa。
+      # continue-on-error：模拟器环节挂了也不影响出包。
+      - name: 编译模拟器版（截图用）
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project DeepSeekHarnessMobile.xcodeproj \
+            -scheme DeepSeekHarnessMobile \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee xcodebuild-sim.log
+
+      - name: 模拟器截图（浅色/深色 首页）
+        continue-on-error: true
+        run: |
+          set -x
+          mkdir -p shots
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; devs=[d for ds in json.load(sys.stdin)['devices'].values() for d in ds if 'iPhone' in d['name']]; print(devs[-1]['udid'] if devs else '')")
+          echo "Using simulator: $UDID"
+          if [ -z "$UDID" ]; then echo "::notice::no iPhone simulator available"; exit 0; fi
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then echo "::notice::simulator .app not found"; exit 0; fi
+          xcrun simctl install "$UDID" "$APP"
+          BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          echo "bundle: $BUNDLE"
+          # 浅色首页（冷启动后多等一会，过掉启动屏）
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl launch "$UDID" "$BUNDLE"
+          sleep 12
+          xcrun simctl io "$UDID" screenshot shots/home-light.png
+          # 深色首页（同一实例切外观即可）
+          xcrun simctl ui "$UDID" appearance dark
+          sleep 4
+          xcrun simctl io "$UDID" screenshot shots/home-dark.png
+          xcrun simctl terminate "$UDID" "$BUNDLE" || true
+          xcrun simctl shutdown "$UDID" || true
+          ls -la shots/
+
+      - name: 上传截图（Agent 自查视觉用）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: 上传模拟器编译日志（排查用）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-sim-log
+          path: xcodebuild-sim.log
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: 上传 ipa（可下载）
         uses: actions/upload-artifact@v4
         with:
