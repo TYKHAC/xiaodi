@@ -47,9 +47,9 @@ struct DirectChatView: View {
             Image(systemName: "water.waves")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("直连模式")
+            Text("你的独立 agent")
                 .font(.title3.weight(.semibold))
-            Text("没连上电脑时也能直接聊。回答来自你配置的模型端点。")
+            Text("模型配好就能直接聊；和电脑端共用一颗大脑。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -178,7 +178,7 @@ struct DirectChatView: View {
 
         let config = DirectConnectionConfig.saved
         guard let apiKey = DirectAPIKeyStore.load(), !apiKey.isEmpty else {
-            errorMessage = "还没填 API Key —— 设置 → 直连模式 里填上（存进 Keychain）"
+            errorMessage = "还没填 API Key —— 设置 → 模型 里填上（Key 只存本机 Keychain）"
             return
         }
 
@@ -235,7 +235,7 @@ struct DirectChatView: View {
     private func errorText(_ error: Error) -> String {
         switch error {
         case let e as DirectChatError:
-            return e.errorDescription ?? "直连失败"
+            return e.errorDescription ?? "请求失败"
         case is CancellationError:
             return ""
         default:

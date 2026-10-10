@@ -30,6 +30,9 @@ final class AgentUserNotificationManager: NSObject, @preconcurrency UNUserNotifi
     }
 
     func requestAuthorizationIfNeeded() async {
+        // CI 视觉自查：截图模式（SIMCTL_CHILD_ZXJ_SHOT）下绝不弹系统权限框，
+        // 否则它会盖住每一张截图。
+        if ProcessInfo.processInfo.environment["ZXJ_SHOT"] != nil { return }
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .notDetermined else { return }
         _ = try? await center.requestAuthorization(options: [.alert, .sound])

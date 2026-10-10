@@ -110,7 +110,7 @@ struct BrainBridgeView: View {
     private var searchSection: some View {
         Section {
             HStack {
-                TextField("搜索大脑…（如：直连模式 决策）", text: $query)
+                TextField("搜索大脑…（如：项目 决策）", text: $query)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)

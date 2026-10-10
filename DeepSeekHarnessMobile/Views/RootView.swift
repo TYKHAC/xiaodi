@@ -258,7 +258,9 @@ private struct RootNavigationHost: View, Equatable {
                 }, action: { selectDrawerItem { newSessionAction() } })
 
                 // 配对：状态和扫码/手动弹层都自包含在这个行组件里
-                PairingDrawerRow()
+                // 朱小姐：去掉「配对设备」（扫码配对）入口 —— 用户 2026-10-10：
+                // 「不需要扫码连接电脑端，我都需要扫码才能连接电脑了我干嘛不直接用电脑」。
+                // 远程操控电脑改成可选能力：在设置里填电脑端地址即可。
 
                 drawerItem("插件", icon: {
                     Image("DshPluginPinwheel")

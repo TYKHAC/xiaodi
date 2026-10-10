@@ -346,7 +346,7 @@ final class AppStore: ObservableObject {
 
     var activeDirectSession: DirectChatSession {
         if let hit = directSessions.first(where: { $0.id == activeDirectSessionID }) { return hit }
-        return directSessions.first ?? DirectChatSession(title: "直连会话")
+        return directSessions.first ?? DirectChatSession(title: "新对话")
     }
 
     /// 未连接时抽屉要显示的本地会话（最新活动在前）
@@ -361,7 +361,7 @@ final class AppStore: ObservableObject {
 
     /// 新建独立会话（离线"新会话"入口走这里）
     func startNewDirectSession() {
-        let session = DirectChatSession(title: "直连会话 \(directSessions.count + 1)")
+        let session = DirectChatSession(title: "新对话 \(directSessions.count + 1)")
         directSessions.insert(session, at: 0)
         DirectChatLog.saveSessions(directSessions)
         activeDirectSessionID = session.id
@@ -522,8 +522,10 @@ final class AppStore: ObservableObject {
         return list
     }
 
-    /// 无会话且开了直连 → 对话页渲染直连聊天页，而不是空态 hero
-    var isDirectModeActive: Bool { selectedSessionId == nil && directConfig.enabled }
+    /// 壳 = 独立 agent（用户 2026-10-10 澄清：「没有所谓的直连模式，只有一个独立的
+    /// agent 壳，连上 api 就是一个完整的 agent」）。没有选中电脑会话时，
+    /// 对话页直接渲染 agent 自己的聊天页，不再需要任何"模式开关"。
+    var isDirectModeActive: Bool { selectedSessionId == nil }
 
     func testDirectConnection() {
         guard let apiKey = DirectAPIKeyStore.load(), !apiKey.isEmpty else {

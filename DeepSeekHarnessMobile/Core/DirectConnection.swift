@@ -145,11 +145,11 @@ enum DirectChatLog {
         if let legacy = UserDefaults.standard.data(forKey: legacyKey),
            let messages = try? JSONDecoder().decode([DirectChatMessage].self, from: legacy),
            !messages.isEmpty {
-            let migrated = DirectChatSession(title: "直连会话", messages: messages)
+            let migrated = DirectChatSession(title: "新对话", messages: messages)
             saveSessions([migrated])
             return [migrated]
         }
-        return [DirectChatSession(title: "直连会话")]
+        return [DirectChatSession(title: "新对话")]
     }
 
     static func saveSessions(_ sessions: [DirectChatSession]) {

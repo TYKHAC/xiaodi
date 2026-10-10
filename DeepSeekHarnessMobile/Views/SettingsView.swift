@@ -86,7 +86,7 @@ struct SettingsView: View {
                     withAnimation(.easeInOut(duration: 0.2)) { modelConfigExpanded.toggle() }
                 } label: {
                     HStack {
-                        Label(modelConfigExpanded ? "收起模型配置" : "模型配置（直连 · 生图 · 视频）",
+                        Label(modelConfigExpanded ? "收起模型配置" : "模型（聊天 · 生图 · 视频）",
                               systemImage: "cpu")
                         Spacer()
                         Image(systemName: modelConfigExpanded ? "chevron.up" : "chevron.down")
@@ -99,9 +99,6 @@ struct SettingsView: View {
 
             if modelConfigExpanded {
             Section {
-                Toggle(isOn: $store.directConfig.enabled) {
-                    Label("启用直连模式", systemImage: "antenna.radiowaves.left.and.right")
-                }
                 TextField("接口地址（如 https://your-relay.com/v1）", text: $store.directConfig.baseURL)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
@@ -139,9 +136,9 @@ struct SettingsView: View {
                 }
                 .disabled(store.directTestState == .testing)
             } header: {
-                Text("直连模式（无电脑也能聊）")
+                Text("聊天模型")
             } footer: {
-                Text("开启后：没连上电脑时，对话页直接进直连聊天。Key 只存本机 Keychain，不出手机；连着电脑时照常走远程。")
+                Text("填好接口地址、模型名和 API Key，这个壳就是一个完整的 agent（不再需要任何「模式」开关）。Key 只存本机 Keychain。")
             }
 
             Section {
@@ -246,9 +243,9 @@ struct SettingsView: View {
                 }
                 Button("Ping 网关") { store.gateway.ping() }
             } header: {
-                Text("远程连接（连电脑）")
+                Text("远程操控电脑（可选）")
             } footer: {
-                Text("远程模式是手动的：开关关闭时，App 启动不会连电脑、也不会弹连接失败；要远程就连一下（或左划栏 → 配对设备）。不连时用直连模式照样聊。")
+                Text("可选能力：填电脑端地址后，可以远程看/用电脑端的会话与文件。不需要扫码 —— 它和电脑端只是共用一颗大脑。不填也不影响单独使用。")
             }
 
             Section {
