@@ -60,7 +60,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            // 朱小姐：原来的「新会话默认配置」（Agent 预设 / 默认模型 / 权限）是电脑端
+            // Hestia：原来的「新会话默认配置」（Agent 预设 / 默认模型 / 权限）是电脑端
             // 部署级设置，手机独立 agent 用不上 —— 用户 2026-10-10 说设置不专业、有
             // 多余的设置，整段移除（相关 store 接口保留，将来要接再放回）。
 

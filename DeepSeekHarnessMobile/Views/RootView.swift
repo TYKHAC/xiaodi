@@ -36,7 +36,7 @@ private struct RootNavigationHost: View, Equatable {
     @State private var navigationPath: [AppRoute] = []
     @State private var newConversationTask: Task<Void, Never>?
     @State private var pendingLiveActivitySessionID: String?
-    // 朱小姐：左划栏提升到根层级（包住整个 NavigationStack），
+    // Hestia：左划栏提升到根层级（包住整个 NavigationStack），
     // 这样在对话页里左划也能开栏，不用先滑回列表页。
     @State private var drawerOffset: CGFloat = 0
     @State private var drawerDragStart: CGFloat?
@@ -73,7 +73,7 @@ private struct RootNavigationHost: View, Equatable {
                 // 注意：不裁剪不加阴影 —— 栈裁剪会切掉 Workspace 用 offset
                 // 手动延伸到状态栏的绘制（light 模式状态栏会露白）。
                 NavigationStack(path: $navigationPath) {
-                    // 朱小姐：首页 = 纯对话区（用户 2026-10-10 明确「这是首页，我不要这个首页，
+                    // Hestia：首页 = 纯对话区（用户 2026-10-10 明确「这是首页，我不要这个首页，
                     // 直接删除掉」）。原来的 WorkspaceView 落地页（未分组 / N 个未归类会话 /
                     // 新建会话 / 搜索会话内容 / 连接失败红字）不再作为根页面 ——
                     // 会话列表在左划栏里，没连电脑时直连聊天直接盖在对话页上。
@@ -94,7 +94,7 @@ private struct RootNavigationHost: View, Equatable {
                         destination(for: route)
                     }
                 }
-                // 朱小姐主题：导航底色跟随明暗（原来恒定藏蓝 = 明暗接缝的来源）
+                // Hestia主题：导航底色跟随明暗（原来恒定藏蓝 = 明暗接缝的来源）
                 .background(colorScheme == .dark ? DSHColor.navy : Color(uiColor: .systemBackground))
                 .overlay {
                     Color.black.opacity(dimOpacity)
@@ -114,7 +114,7 @@ private struct RootNavigationHost: View, Equatable {
             .frame(width: geometry.size.width, height: geometry.size.height)
             .simultaneousGesture(drawerDrag(width: drawerWidth))
         }
-        // 朱小姐：首页 = 对话本体。启动时跳过 Workspace 列表页，直接打开会话。
+        // Hestia：首页 = 对话本体。启动时跳过 Workspace 列表页，直接打开会话。
         // 会话列表在根层级左划栏里。没有历史会话（首次使用）
         // 或连接还没建立时，先停在 Workspace，等 sessions 到了/连上了再重试。
         .task {
@@ -168,7 +168,7 @@ private struct RootNavigationHost: View, Equatable {
         }
     }
 
-    // MARK: - 朱小姐：左划栏（根层级，包住整个导航栈）
+    // MARK: - Hestia：左划栏（根层级，包住整个导航栈）
 
     /// 会话列表（用户 2026-10-09 会话域隔离决策）：
     /// · 远程连接时 = 电脑会话（只显示真有对话的、未归档的 —— 修"电脑上没这么多会话"）
@@ -229,20 +229,20 @@ private struct RootNavigationHost: View, Equatable {
         }
     }
 
-    /// 根首页的对话头部：有选中会话就显示它，否则是「朱小姐」待命页
+    /// 根首页的对话头部：有选中会话就显示它，否则是「Hestia」待命页
     private var rootConversationHeader: ConversationNavigationHeader {
         if let session = store.sessions.first(where: { $0.id == store.selectedSessionId }) {
             return conversationHeader(for: session)
         }
-        return ConversationNavigationHeader(sessionID: nil, title: "朱小姐", agentPresetTitle: "")
+        return ConversationNavigationHeader(sessionID: nil, title: "Hestia", agentPresetTitle: "")
     }
 
     @ViewBuilder
     private func drawerPanel(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                // 朱小姐：品牌字样只留一处（首页顶栏）—— 抽屉这里只放水波纹图形，
-                // 用户 2026-10-10「app内不要有那么多朱小姐字样」。
+                // Hestia：品牌字样只留一处（首页顶栏）—— 抽屉这里只放水波纹图形，
+                // 用户 2026-10-10「app内不要有那么多Hestia字样」。
                 HStack(spacing: 8) {
                     Image(systemName: "water.waves")
                         .font(.system(size: 22, weight: .semibold))
@@ -258,7 +258,7 @@ private struct RootNavigationHost: View, Equatable {
                 }, action: { selectDrawerItem { newSessionAction() } })
 
                 // 配对：状态和扫码/手动弹层都自包含在这个行组件里
-                // 朱小姐：去掉「配对设备」（扫码配对）入口 —— 用户 2026-10-10：
+                // Hestia：去掉「配对设备」（扫码配对）入口 —— 用户 2026-10-10：
                 // 「不需要扫码连接电脑端，我都需要扫码才能连接电脑了我干嘛不直接用电脑」。
                 // 远程操控电脑改成可选能力：在设置里填电脑端地址即可。
 
@@ -276,7 +276,7 @@ private struct RootNavigationHost: View, Equatable {
                         .frame(width: 24)
                 }, action: { selectDrawerItem { navigate(to: .scheduledTasks) } })
 
-                // 朱小姐：大脑双向（读=检索大脑快照，写=捕获进 90-inbox）
+                // Hestia：大脑双向（读=检索大脑快照，写=捕获进 90-inbox）
                 drawerItem("大脑", icon: {
                     Image(systemName: "brain.head.profile")
                         .font(.system(size: 20, weight: .medium))
@@ -533,7 +533,7 @@ private struct RootNavigationHost: View, Equatable {
         navigationPath.append(route)
     }
 
-    /// 朱小姐：首页直接进对话。优先恢复上次在看的会话，否则取最近活动的那个；
+    /// Hestia：首页直接进对话。优先恢复上次在看的会话，否则取最近活动的那个；
     /// 都没有（首次使用）就留在 Workspace 让用户点「新会话」。
     /// 自动接管只允许替换"占位"路由：根列表页，或无会话的对话 hero。
     /// 真实会话绝不被打断。
@@ -1234,7 +1234,7 @@ private struct ConversationNavigationHeader: Hashable {
 
 /// Owns only navigation chrome. The content below it may observe the complete
 /// app store and update at WebSocket frequency without invalidating the toolbar.
-// 朱小姐：统一的 push 页外壳 —— 隐藏系统返回键（它的边缘返回手势会和
+// Hestia：统一的 push 页外壳 —— 隐藏系统返回键（它的边缘返回手势会和
 // 左划栏手势打架），换成左上角 chevron。
 private struct PushBackChrome<Content: View>: View {
     @ViewBuilder let content: () -> Content
@@ -1285,7 +1285,7 @@ private struct ConversationNavigationShell<Content: View>: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbarRole(.editor)
-            // 朱小姐：隐藏系统返回键 —— 它的边缘返回手势会和根层级左划栏打架；
+            // Hestia：隐藏系统返回键 —— 它的边缘返回手势会和根层级左划栏打架；
             // 换成左上角 chevron，边缘整条留给抽屉。
             .navigationBarBackButtonHidden(true)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -1303,7 +1303,7 @@ private struct ConversationNavigationShell<Content: View>: View {
                         .accessibilityLabel(String(localized: "返回"))
                     }
                 }
-                // 朱小姐：顶栏静音键（一键开关朗读回复）。它原来长在 WorkspaceView 里，
+                // Hestia：顶栏静音键（一键开关朗读回复）。它原来长在 WorkspaceView 里，
                 // 首页换成对话页后必须搬到对话外壳，否则用户再也找不到朗读开关。
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

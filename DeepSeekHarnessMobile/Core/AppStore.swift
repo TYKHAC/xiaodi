@@ -314,18 +314,18 @@ final class AppStore: ObservableObject {
         }
     }
 
-    /// 朱小姐：启动时自动连接电脑。**默认关** —— 用户 2026-10-09 明确要求：
+    /// Hestia：启动时自动连接电脑。**默认关** —— 用户 2026-10-09 明确要求：
     /// 没主动开远程就不许自己连、更不许弹"连接失败"。手动连接不受此开关影响。
     @Published var remoteAutoConnectEnabled: Bool {
         didSet { preferences.remoteAutoConnectEnabled = remoteAutoConnectEnabled }
     }
 
-    /// 朱小姐：消息字号倍数（设置页改；对话页 dynamicTypeSize + Markdown 主题同时生效）
+    /// Hestia：消息字号倍数（设置页改；对话页 dynamicTypeSize + Markdown 主题同时生效）
     @Published var messageFontScale: Double {
         didSet { MessageFontScale.set(messageFontScale) }
     }
 
-    // ── 朱小姐直连模式（P0-1：无电脑也能聊）──
+    // ── Hestia直连模式（P0-1：无电脑也能聊）──
 
     /// App 自带 key 直连 OpenAI 兼容端点的配置（key 在 Keychain，这里只有非敏感部分）
     @Published var directConfig: DirectConnectionConfig {
@@ -335,7 +335,7 @@ final class AppStore: ObservableObject {
     /// 直连设置页里的连接测试状态
     @Published var directTestState: DirectTestState?
 
-    // ── 朱小姐：独立 agent 的本地会话（用户 2026-10-09 决策）──
+    // ── Hestia：独立 agent 的本地会话（用户 2026-10-09 决策）──
     // 与电脑会话完全隔离：未连接时抽屉只显示这里，连接时显示电脑的；
     // 离线也保留（本来就是独立 agent 自己开的会话）。
     @Published private(set) var directSessions: [DirectChatSession] = DirectChatLog.loadSessions()
@@ -419,7 +419,7 @@ final class AppStore: ObservableObject {
         }
     }
 
-    // ── 朱小姐：大脑双向（P0）── 桥＝PC 端 brain-bridge.mjs :8902（和网关同一台电脑）
+    // ── Hestia：大脑双向（P0）── 桥＝PC 端 brain-bridge.mjs :8902（和网关同一台电脑）
 
     /// 离线时排队的捕获条目（恢复后 flushBrainQueue 补投，不丢）
     @Published private(set) var brainPending: [BrainCaptureItem] = []
@@ -1146,7 +1146,7 @@ final class AppStore: ObservableObject {
     func connectOnColdLaunchIfPaired() {
         guard !hasHandledColdLaunchConnection else { return }
         hasHandledColdLaunchConnection = true
-        // 朱小姐：远程模式手动开 —— 没开就什么都不做，也绝不弹"尚未连接/连接失败"。
+        // Hestia：远程模式手动开 —— 没开就什么都不做，也绝不弹"尚未连接/连接失败"。
         guard remoteAutoConnectEnabled else { return }
         guard gateway.hasStoredCredential(for: endpoint) else {
             // 旧版这里会 lastError 弹窗（每次冷启动都"尚未连接到电脑"）—— 去掉，
@@ -2989,7 +2989,7 @@ final class AppStore: ObservableObject {
     private func merge(_ record: SessionEvent) {
         if record.event.type == "turn/end" {
             cancellingSessionIDs.remove(record.sessionId)
-            // ── 朱小姐：播报开关开着就念这一轮的完整回答（打字/语音轮都念）──
+            // ── Hestia：播报开关开着就念这一轮的完整回答（打字/语音轮都念）──
             // 顶栏静音键 = speakRepliesEnabled 总开关；voice.speak 内部做
             // Markdown 清洗 + 分句；一轮只念最后一条定稿回复。
             lastTurnWasVoice = false      // 标记用完即清

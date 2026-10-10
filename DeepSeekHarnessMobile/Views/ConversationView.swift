@@ -213,7 +213,7 @@ struct ConversationView: View {
     @State private var activeView = 0
     @State private var draft = ""
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
-    // ── 朱小姐：底部待命栏 ──
+    // ── Hestia：底部待命栏 ──
     // 键盘收起时显示「相机 ｜ 珍珠语音 ｜ 键盘 ｜ 更多」四个圆键，
     // 所以相册选择器和相机都要能被代码唤起（不能只靠 PhotosPicker 那个按钮）。
     @State private var showsPhotoPicker = false
@@ -271,7 +271,7 @@ struct ConversationView: View {
                 }
             }
 
-            // 朱小姐：直连模式（无会话 + 开了直连）→ 独立直连聊天页盖住网关时间线，
+            // Hestia：直连模式（无会话 + 开了直连）→ 独立直连聊天页盖住网关时间线，
             // 不碰 KMP store（远端事件只认已订阅的会话，硬塞会被拒）。
             if store.isDirectModeActive {
                 DirectChatView()
@@ -281,7 +281,7 @@ struct ConversationView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // 朱小姐：字号设置。Markdown 正文走主题（上面已乘倍数），
+        // Hestia：字号设置。Markdown 正文走主题（上面已乘倍数），
         // 这里管 UIKit 那条路（ConversationViewport 用 preferredFont(.body)，靠 trait 缩放）。
         .dynamicTypeSize(Self.messageTypeSize(for: store.messageFontScale))
         .ignoresSafeArea(.container, edges: .bottom)
@@ -298,7 +298,7 @@ struct ConversationView: View {
                 sessionTitle: store.selectedSession?.title ?? String(localized: "session.new.fallback", defaultValue: "新会话")
             )
         }
-        // 朱小姐：相机/相册展示修饰符必须挂 body 常在层。
+        // Hestia：相机/相册展示修饰符必须挂 body 常在层。
         // 第15轮前它们挂在 composerCard 链尾，而待命栏显示时 composerCard
         // 整个不在视图树 → 点拍照/图库毫无反应（纯挂错层，非权限问题）。
         .onChange(of: selectedPhotoItems) { _, items in
@@ -500,7 +500,7 @@ struct ConversationView: View {
                             .padding(.horizontal, 14)
                             .padding(.bottom, 8)
                         }
-                        // 朱小姐：直连模式自带输入栏，网关 composer 整个收起
+                        // Hestia：直连模式自带输入栏，网关 composer 整个收起
                         if !store.isDirectModeActive {
                             VStack(spacing: 10) {
                                 slashCommandMenus
@@ -596,7 +596,7 @@ struct ConversationView: View {
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            // 朱小姐：去 DeepSeek 化 —— 鲸鱼图 → 品牌水波纹（和抽屉/直连页同一视觉语言）
+            // Hestia：去 DeepSeek 化 —— 鲸鱼图 → 品牌水波纹（和抽屉/直连页同一视觉语言）
             Image(systemName: "water.waves")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(DSHColor.ocean)
@@ -776,7 +776,7 @@ struct ConversationView: View {
             VoiceStateBadge(voice: store.voice)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 4)
-            // 朱小姐：键盘收起＝四个圆键；一旦聚焦或有草稿/有图，就回到输入框
+            // Hestia：键盘收起＝四个圆键；一旦聚焦或有草稿/有图，就回到输入框
             if showsStandbyBar {
                 standbyBar
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
@@ -794,7 +794,7 @@ struct ConversationView: View {
         reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.25)
     }
 
-    // MARK: - 朱小姐：底部待命栏（相机 ｜ 珍珠语音 ｜ 键盘）
+    // MARK: - Hestia：底部待命栏（相机 ｜ 珍珠语音 ｜ 键盘）
 
     /// 空闲且没有草稿时用三个圆键；一旦聚焦、有文字或有待发图片，就让位给输入框。
     private var showsStandbyBar: Bool {
@@ -1366,7 +1366,7 @@ struct ConversationView: View {
         }
     }
 
-    /// 朱小姐：字号倍数 → 系统动态字号档位（large = iOS 默认）。
+    /// Hestia：字号倍数 → 系统动态字号档位（large = iOS 默认）。
     private static func messageTypeSize(for scale: Double) -> DynamicTypeSize {
         switch scale {
         case ..<0.95: return .small
@@ -3943,7 +3943,7 @@ private extension Theme {
             .text {
                 ForegroundColor(.primary)
                 BackgroundColor(nil)
-                // 朱小姐：消息字号设置在这里落地（绝对磅值，dynamicTypeSize 影响不到它）
+                // Hestia：消息字号设置在这里落地（绝对磅值，dynamicTypeSize 影响不到它）
                 FontSize(Double(compact ? 13 : 17) * MessageFontScale.current)
             }
             .code {
@@ -4108,7 +4108,7 @@ enum JSONSyntaxHighlighter {
     }
 }
 
-// MARK: - 朱小姐：相机拍照（点相机键用）
+// MARK: - Hestia：相机拍照（点相机键用）
 
 /// 系统相机，只做一件事：拍一张、回调 UIImage。
 /// 特意不单独建文件 —— pbxproj 是显式清单，新增文件要登记四处，能不加就不加。

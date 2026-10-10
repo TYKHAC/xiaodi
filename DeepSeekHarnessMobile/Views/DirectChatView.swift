@@ -1,5 +1,5 @@
 //
-//  朱小姐 · 直连聊天页（P0-1「打开就是对话」在无电脑时的落点）
+//  Hestia · 直连聊天页（P0-1「打开就是对话」在无电脑时的落点）
 //  ─────────────────────────────────────────────────────────────
 //  独立于 KMP 会话 store：消息存在本地数组，走 DirectChatClient 的 SSE 流。
 //  网关连不上（电脑不在/换网）时，ConversationView 的空态渲染这里 ——
@@ -21,7 +21,7 @@ struct DirectChatView: View {
     private var systemPrompt: DirectChatMessage {
         DirectChatMessage(
             role: "system",
-            content: "你是「朱小姐」，用户的专属手机 AI 助手。回答尽量简洁、直接，用中文。"
+            content: "你是「Hestia」，用户的专属手机 AI 助手。回答尽量简洁、直接，用中文。"
         )
     }
 
@@ -91,7 +91,7 @@ struct DirectChatView: View {
                 .textSelection(.enabled)
                 .padding(.horizontal, 13)
                 .padding(.vertical, 10)
-                // 朱小姐主题 v1：用户气泡与远端对话页完全一致
+                // Hestia主题 v1：用户气泡与远端对话页完全一致
                 // （淡染+描边+自适应，ZhuTheme 统一取值，不再各页各画）
                 .background(
                     role == "user"

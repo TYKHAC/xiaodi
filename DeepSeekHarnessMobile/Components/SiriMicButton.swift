@@ -28,19 +28,6 @@ struct SiriMicButton: View {
     private var isSpeaking: Bool { voice.state == .speaking }
     private var isIdle: Bool { !isRecording && !isTranscribing && !isSpeaking }
 
-    /// Siri 的多色渐变（青→蓝→紫），静止态只露一点点，按下才全开
-    private var siriGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 0.20, green: 0.85, blue: 0.75),
-                Color(red: 0.25, green: 0.60, blue: 0.98),
-                Color(red: 0.60, green: 0.40, blue: 0.96),
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
     var body: some View {
         Button {
             // 播报中 → 打断；空闲 → 进入"准备按住"的提示态
@@ -53,16 +40,9 @@ struct SiriMicButton: View {
                     ring(scale: 1.35, opacity: 0.22, delay: 0.35)
                 }
 
-                // 底圆：闲着＝珍珠圆球，按住/播报时才切成渐变色。
-                // 朱小姐：不放任何图标 —— 用户要的就是一颗纯圆球；
-                // 语音状态靠「变大 + 波纹 + 底色」表达，文字提示由 VoiceStateBadge 负责。
-                Group {
-                    if isIdle {
-                        PearlOrbView()
-                    } else {
-                        Circle().fill(background)
-                    }
-                }
+                // Hestia：圆球本身就是全部视觉 —— 任何状态下都显示这颗球，
+                // 状态差别交给球的动效（加速/变亮/呼吸）+ 波纹 + 文字标签。
+                PearlOrbView(isActive: !isIdle, isSpeaking: isSpeaking)
                 .frame(width: diameter, height: diameter)
                 .clipShape(Circle())
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1))
@@ -128,25 +108,8 @@ struct SiriMicButton: View {
 
     // MARK: - 外观
 
-    // 朱小姐：不放图标 —— 圆球本身（珍珠质感/激活渐变）就是全部视觉，
-    // 状态区分交给 scaleEffect(1.16) + 波纹 + VoiceStateBadge 文字。
-
-    private var background: AnyShapeStyle {
-        if isRecording || isTranscribing { return AnyShapeStyle(siriGradient) }
-        if isSpeaking {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.20, green: 0.85, blue: 0.75),
-                        Color(red: 0.25, green: 0.60, blue: 0.98),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-        }
-        return AnyShapeStyle(Color.secondary.opacity(0.14))
-    }
+    // Hestia：不放图标 —— 圆球本身就是全部视觉（Siri 风格的深色球 + 流动光带，
+    // 见 PearlOrbView）；状态区别靠球的动效 + scaleEffect(1.16) + 波纹 + 文字标签。
 
     private var shadowColor: Color {
         isRecording || isTranscribing
@@ -213,44 +176,103 @@ struct VoiceStateBadge: View {
     }
 }
 
-// MARK: - 珍珠圆球（朱小姐的语音键质感）
+// MARK: - Hestia 语音球（Siri 风格：深色球体 + 流动彩色光带）
 
-/// 虹彩珍珠质感：四团柔光（粉/蓝/薄荷/紫）+ 一条高光，
-/// 全部用渐变叠出来，不依赖图片资源，所以不用往 Assets 里加东西。
+/// 照系统 Siri 的新球体做：深色底，内部几团高饱和光带缓慢缠绕流动，中心有亮核。
+/// 全部用 SwiftUI `Canvas` + 渐变画出来，**不依赖任何图片资源**。
+/// 动画由 `TimelineView(.animation)` 按时间驱动（不是 withAnimation 循环），
+/// 所以能一直平滑流动，且开了「减少动态效果」时自动停。
+/// 状态：空闲 = 慢速暗淡；按住说话 = 加速变亮；播报 = 呼吸脉冲。
 struct PearlOrbView: View {
+    /// 语音激活（聆听/识别）—— 加速变亮
+    var isActive: Bool = false
+    /// 播报中 —— 呼吸脉冲
+    var isSpeaking: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.99, green: 0.95, blue: 0.98),
-                    Color(red: 0.92, green: 0.95, blue: 1.00),
-                    Color(red: 0.91, green: 0.99, blue: 0.97),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { context in
+            Canvas { ctx, size in
+                draw(in: &ctx, size: size, t: context.date.timeIntervalSinceReferenceDate)
+            }
+        }
+        .clipShape(Circle())
+        .overlay(
+            // 左上角玻璃高光
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.42), .clear],
+                        center: UnitPoint(x: 0.30, y: 0.22),
+                        startRadius: 0,
+                        endRadius: 42
+                    )
+                )
+                .blendMode(.plusLighter)
+                .allowsHitTesting(false)
+        )
+        .overlay(Circle().strokeBorder(Color.white.opacity(0.16), lineWidth: 1))
+    }
+
+    /// 状态相关的速度 / 亮度
+    private var speed: Double { isActive ? 1.9 : 0.62 }
+    private var glow: Double { isActive ? 1.0 : 0.72 }
+
+    private func draw(in ctx: inout GraphicsContext, size: CGSize, t: TimeInterval) {
+        let c = CGPoint(x: size.width / 2, y: size.height / 2)
+        let r = min(size.width, size.height) / 2
+
+        // 1) 深色球体底
+        ctx.fill(
+            Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color(red: 0.20, green: 0.22, blue: 0.38),
+                    Color(red: 0.04, green: 0.05, blue: 0.12),
+                ]),
+                center: CGPoint(x: c.x - r * 0.25, y: c.y - r * 0.30),
+                startRadius: r * 0.05,
+                endRadius: r * 1.25
             )
-            RadialGradient(
-                colors: [Color.white, Color(red: 1.0, green: 0.88, blue: 0.95).opacity(0.85), .clear],
-                center: UnitPoint(x: 0.28, y: 0.20), startRadius: 0, endRadius: 95
-            )
-            RadialGradient(
-                colors: [Color(red: 0.87, green: 0.93, blue: 1.00).opacity(0.95), .clear],
-                center: UnitPoint(x: 0.78, y: 0.26), startRadius: 0, endRadius: 85
-            )
-            RadialGradient(
-                colors: [Color(red: 0.86, green: 0.99, blue: 0.95).opacity(0.95), .clear],
-                center: UnitPoint(x: 0.72, y: 0.82), startRadius: 0, endRadius: 85
-            )
-            RadialGradient(
-                colors: [Color(red: 0.93, green: 0.87, blue: 1.00).opacity(0.95), .clear],
-                center: UnitPoint(x: 0.20, y: 0.78), startRadius: 0, endRadius: 85
-            )
-            // 左上角那一点油光
-            RadialGradient(
-                colors: [Color.white.opacity(0.95), .clear],
-                center: UnitPoint(x: 0.24, y: 0.16), startRadius: 0, endRadius: 26
+        )
+
+        // 2) 流动光带（模糊 + 叠加，四团不同色相各自转）
+        ctx.addFilter(.blur(radius: r * 0.30))
+        ctx.blendMode = .plusLighter
+        let blobs: [(Color, CGFloat, Double, Double)] = [
+            (Color(red: 0.25, green: 0.55, blue: 1.00), 0.50, 0.42, 0.95),   // 蓝
+            (Color(red: 1.00, green: 0.35, blue: 0.75), 0.42, -0.31, 0.80),  // 粉
+            (Color(red: 0.45, green: 0.95, blue: 0.90), 0.36, 0.63, 0.62),   // 青
+            (Color(red: 0.65, green: 0.40, blue: 1.00), 0.32, -0.78, 0.58),  // 紫
+        ]
+        for (color, distance, spin, alpha) in blobs {
+            let a = t * speed * spin
+            let px = c.x + CGFloat(cos(a)) * r * distance
+            let py = c.y + CGFloat(sin(a * 0.8)) * r * distance * 0.78
+            let br = r * 0.55
+            ctx.fill(
+                Path(ellipseIn: CGRect(x: px - br, y: py - br, width: br * 2, height: br * 2)),
+                with: .color(color.opacity(alpha * glow))
             )
         }
+
+        // 3) 中心亮核（轻轻呼吸）
+        let coreR = r * (isSpeaking ? 0.30 + 0.05 * sin(t * 4.2) : 0.28 + 0.02 * sin(t * 1.6))
+        ctx.fill(
+            Path(ellipseIn: CGRect(x: c.x - coreR, y: c.y - coreR, width: coreR * 2, height: coreR * 2)),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(0.95 * glow),
+                    Color(red: 0.70, green: 0.85, blue: 1.00).opacity(0.28 * glow),
+                    .clear,
+                ]),
+                center: c,
+                startRadius: 0,
+                endRadius: coreR * 2.4
+            )
+        )
+        ctx.blendMode = .normal
+        ctx.addFilter(.blur(radius: 0))
     }
 }
 

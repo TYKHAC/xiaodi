@@ -1,5 +1,5 @@
 //
-//  朱小姐 · 直连模式（P0-1）
+//  Hestia · 直连模式（P0-1）
 //  ─────────────────────────────────────────────────────────────
 //  App 自己调 OpenAI 兼容端点跑对话（自带中转 key），
 //  无电脑也能聊 —— 用户拍板的「直连 + 远程」双模式之一。
@@ -16,7 +16,7 @@ import Security
 
 struct DirectConnectionConfig: Codable, Equatable {
     var enabled: Bool
-    /// OpenAI 兼容 base URL（朱小姐：默认留空，用户填自己的中转/服务商地址）
+    /// OpenAI 兼容 base URL（Hestia：默认留空，用户填自己的中转/服务商地址）
     var baseURL: String
     var model: String
 

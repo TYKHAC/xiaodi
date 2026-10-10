@@ -347,7 +347,7 @@ final class VoiceInputController: NSObject, ObservableObject {
         for mark in ["#", ">", "-", "*", "_", "~"] {
             t = t.replacingOccurrences(of: "\(mark) ", with: "")
         }
-        // 朱小姐：漏网的标记 —— **粗体**/~~删除线~~ 会把"星号"念出来
+        // Hestia：漏网的标记 —— **粗体**/~~删除线~~ 会把"星号"念出来
         t = t.replacingOccurrences(of: "**", with: "")
         t = t.replacingOccurrences(of: "__", with: "")
         t = t.replacingOccurrences(of: "~~", with: "")

@@ -1,5 +1,5 @@
 //
-//  朱小姐 · 大脑双向（P0 用户点名）
+//  Hestia · 大脑双向（P0 用户点名）
 //  ─────────────────────────────────────────────────────────────
 //  读：GET  http://<网关主机>:8902/search?q=… → brain.mjs search --json
 //  写：POST http://<网关主机>:8902/capture     → brain.mjs capture → knowledge/90-inbox/

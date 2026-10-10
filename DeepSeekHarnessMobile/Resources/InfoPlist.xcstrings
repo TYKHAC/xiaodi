@@ -8,7 +8,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "new",
-            "value": "朱小姐"
+            "value": "Hestia"
           }
         }
       }
@@ -20,7 +20,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "new",
-            "value": "朱小姐"
+            "value": "Hestia"
           }
         }
       }
@@ -38,7 +38,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "new",
-            "value": "拍照发给朱小姐，或扫描电脑端生成的配对二维码。"
+            "value": "拍照发给Hestia，或扫描电脑端生成的配对二维码。"
           }
         }
       }
@@ -56,7 +56,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "new",
-            "value": "连接朱小姐的电脑端网关（同一网络或远程虚拟网络）。"
+            "value": "连接Hestia的电脑端网关（同一网络或远程虚拟网络）。"
           }
         }
       }

@@ -16,7 +16,7 @@ struct WorkspaceView: View {
     @State private var archivingSession: SessionSummary?
     @State private var connectionIsReady = false
     @State private var showsDirectoryBrowser = false
-    // 朱小姐：抽屉已提升到根层级（RootView）；二维码/手动配对状态自包含在 PairingDrawerRow 里。
+    // Hestia：抽屉已提升到根层级（RootView）；二维码/手动配对状态自包含在 PairingDrawerRow 里。
     @FocusState private var sessionSearchIsFocused: Bool
 
     var body: some View {
@@ -81,7 +81,7 @@ struct WorkspaceView: View {
                     }
                     Spacer(minLength: 44)
                     VStack(alignment: .leading, spacing: 7) {
-                        Text("朱小姐")
+                        Text("Hestia")
                             .font(.system(size: 32, weight: .bold))
                         Text("你的专属代理")
                             .font(.subheadline).foregroundStyle(.secondary)
@@ -110,13 +110,13 @@ struct WorkspaceView: View {
     }
 
     private func header() -> some View {
-        // 朱小姐：顶部不放 ☰ 和 ⚙（都进左划栏了），只留居中的名字 + 右上角静音键。
+        // Hestia：顶部不放 ☰ 和 ⚙（都进左划栏了），只留居中的名字 + 右上角静音键。
         // 左划栏在根层级（RootView），左边缘右滑即可打开。
         HStack(spacing: 0) {
             Color.clear.frame(width: 34, height: 34)
             Spacer(minLength: 0)
             VStack(spacing: 1) {
-                Text("朱小姐")
+                Text("Hestia")
                     .font(.system(size: 17, weight: .semibold))
                 HStack(spacing: 4) {
                     Circle()
@@ -135,7 +135,7 @@ struct WorkspaceView: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// 朱小姐：静音键 —— 一键开关「朗读回复」（对应 AppPreferences.speakRepliesEnabled）
+    /// Hestia：静音键 —— 一键开关「朗读回复」（对应 AppPreferences.speakRepliesEnabled）
     private var muteButton: some View {
         Button {
             store.speakRepliesEnabled.toggle()
@@ -898,12 +898,12 @@ private final class GatewayScannerController: UIViewController, AVCaptureMetadat
                     if granted {
                         self.configureAndRun()
                     } else {
-                        self.finish(with: String(localized: "camera.denied", defaultValue: "未获得相机权限。请在系统设置中允许朱小姐使用相机后重试。"))
+                        self.finish(with: String(localized: "camera.denied", defaultValue: "未获得相机权限。请在系统设置中允许Hestia使用相机后重试。"))
                     }
                 }
             }
         case .denied, .restricted:
-            finish(with: String(localized: "camera.restricted", defaultValue: "相机权限不可用。请在系统设置中允许朱小姐使用相机后重试。"))
+            finish(with: String(localized: "camera.restricted", defaultValue: "相机权限不可用。请在系统设置中允许Hestia使用相机后重试。"))
         @unknown default:
             finish(with: String(localized: "无法确定当前相机权限状态。"))
         }
@@ -978,7 +978,7 @@ private final class GatewayScannerController: UIViewController, AVCaptureMetadat
     }
 }
 
-// 朱小姐：左划栏会话行的标题截断（超出 40 字加省略号）
+// Hestia：左划栏会话行的标题截断（超出 40 字加省略号）
 extension String {
     func truncatingToLength(_ maxLength: Int) -> String {
         count > maxLength ? String(prefix(maxLength)) + "…" : self
@@ -986,7 +986,7 @@ extension String {
 }
 
 
-// 朱小姐：配对入口行 —— 状态与扫码/手动弹层全部自包含，
+// Hestia：配对入口行 —— 状态与扫码/手动弹层全部自包含，
 // 所以能放进根层级左划栏（原先它挂在 Workspace 顶栏上）。
 struct PairingDrawerRow: View {
     @EnvironmentObject private var store: AppStore

@@ -5,7 +5,7 @@ protocol AppPreferences: AnyObject {
     var selectedWorkspaceID: String? { get set }
     /// 小弟：是否语音播报助手回答。默认关 —— 语音输出很吵，让用户自己开。
     var speakRepliesEnabled: Bool { get set }
-    /// 朱小姐：启动时是否自动连电脑（远程模式手动开 —— 用户 2026-10-09 明确要求：
+    /// Hestia：启动时是否自动连电脑（远程模式手动开 —— 用户 2026-10-09 明确要求：
     /// 没主动开远程时不要自己连、更不要弹"连接失败"）。默认关。
     var remoteAutoConnectEnabled: Bool { get set }
 
@@ -15,7 +15,7 @@ protocol AppPreferences: AnyObject {
 }
 
 final class UserDefaultsAppPreferences: AppPreferences {
-    // 朱小姐：端口修正 —— 真实 mobile-gateway 在 3081（3080 是老配置，连了必失败）
+    // Hestia：端口修正 —— 真实 mobile-gateway 在 3081（3080 是老配置，连了必失败）
     static let defaultEndpoint = "ws://127.0.0.1:3081/ws/mobile"
 
     private enum Key {
@@ -26,7 +26,7 @@ final class UserDefaultsAppPreferences: AppPreferences {
         static let manuallyPositionedSessionIDs = "gateway.manuallyPositionedSessionIds"
         // 小弟：播报开关。不注册默认值时不存在 → 用 false（关闭）兜底。
         static let speakRepliesEnabled = "xiaodi.speakRepliesEnabled"
-        // 朱小姐：启动自动连接。默认 false —— 远程要用户主动开。
+        // Hestia：启动自动连接。默认 false —— 远程要用户主动开。
         static let remoteAutoConnectEnabled = "xiaodi.remoteAutoConnect"
     }
 
@@ -81,7 +81,7 @@ final class UserDefaultsAppPreferences: AppPreferences {
     }
 }
 
-/// 朱小姐：消息字号倍数（1.0 = 标准）。
+/// Hestia：消息字号倍数（1.0 = 标准）。
 /// 刻意用全局 UserDefaults key、不走 gateway profile 命名空间 ——
 /// Markdown 主题和 ConversationView 都直接读它，必须两边看到同一个值。
 enum MessageFontScale {

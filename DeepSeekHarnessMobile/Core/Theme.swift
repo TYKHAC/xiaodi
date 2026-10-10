@@ -13,7 +13,7 @@ enum DSHColor {
     static let success = Color(red: 0.18, green: 0.72, blue: 0.36)
 }
 
-/// 朱小姐统一主题「珍珠」v1 —— 用户 2026-10-09：
+/// Hestia统一主题「珍珠」v1 —— 用户 2026-10-09：
 /// 「东拼西凑很杂，我想要统一主题」。**所有界面从这里取值，别再各写各的。**
 ///
 /// 规范三条：
@@ -42,7 +42,7 @@ enum ZhuTheme {
     static let radiusControl: CGFloat = 14
 }
 
-/// 朱小姐首页背景 —— 珍珠光晕（用户要求去掉 DeepSeek 落地页的点阵样式）。
+/// Hestia首页背景 —— 珍珠光晕（用户要求去掉 DeepSeek 落地页的点阵样式）。
 /// 浅色：系统底 + 三团珍珠色柔光；深色：藏蓝底 + 淡彩光晕。
 /// 全部纯代码渐变，不依赖素材，也不用 Metal。
 struct DeepOceanBackground: View {

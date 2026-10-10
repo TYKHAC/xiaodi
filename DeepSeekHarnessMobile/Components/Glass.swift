@@ -75,10 +75,10 @@ struct ConnectionDot: View {
 struct HarnessMark: View {
     var body: some View {
         HStack(spacing: 7) {
-            // 朱小姐：去 DeepSeek 化 —— 品牌锁定改为「水波纹 + 朱小姐」
+            // Hestia：去 DeepSeek 化 —— 品牌锁定改为「水波纹 + Hestia」
             Image(systemName: "water.waves")
                 .font(.system(size: 24, weight: .semibold))
-            Text("朱小姐").font(.system(size: 22, weight: .bold, design: .rounded))
+            Text("Hestia").font(.system(size: 22, weight: .bold, design: .rounded))
         }
     }
 }
@@ -87,7 +87,7 @@ struct DeepSeekWhaleIcon: View {
     var size: CGFloat
 
     var body: some View {
-        // 朱小姐：不再引用 DeepSeek 鲸鱼素材；保留壳子供旧调用点安全使用
+        // Hestia：不再引用 DeepSeek 鲸鱼素材；保留壳子供旧调用点安全使用
         Image(systemName: "water.waves")
             .font(.system(size: size * 0.9, weight: .light))
             .frame(width: size, height: size)
