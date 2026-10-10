@@ -335,6 +335,9 @@ final class AppStore: ObservableObject {
     /// 直连设置页里的连接测试状态
     @Published var directTestState: DirectTestState?
 
+    /// 「转文字」手势的落点：语音识别结果先放这里，页面取走后清空（不直接发送）
+    @Published var voiceDraftToComposer: String?
+
     // ── Hestia：独立 agent 的本地会话（用户 2026-10-09 决策）──
     // 与电脑会话完全隔离：未连接时抽屉只显示这里，连接时显示电脑的；
     // 离线也保留（本来就是独立 agent 自己开的会话）。
@@ -931,7 +934,14 @@ final class AppStore: ObservableObject {
         // 放在前面会报 "variable 'self.endpoint' used before being initialized"。
         self.voice.onTranscribed = { [weak self] text in
             Task { @MainActor in
-                _ = self?.sendByVoice(text)
+                guard let self else { return }
+                // 「向右上滑 = 转文字」：只把文字填进输入框，不直接发送
+                if self.voice.routeTranscriptToDraft {
+                    self.voice.routeTranscriptToDraft = false
+                    self.voiceDraftToComposer = text
+                } else {
+                    _ = self.sendByVoice(text)
+                }
             }
         }
     }

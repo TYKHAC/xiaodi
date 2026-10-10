@@ -47,6 +47,10 @@ final class VoiceInputController: NSObject, ObservableObject {
     /// 语音播报开关（用户可以关掉只听不说）
     @Published var speakReplies: Bool = true
 
+    /// 语音转文字后是否只填进输入框（不直接发送）—— UI 在"向右上滑 = 转文字"时置 true，
+    /// AppStore 的 onTranscribed 消费后清掉它（用户 2026-10-10 定的手势）。
+    var routeTranscriptToDraft: Bool = false
+
     // MARK: - 依赖（外部注入，便于测试与替换）
 
     /// 转写成功后把文字交出去 —— 由 View 层接到 store.send

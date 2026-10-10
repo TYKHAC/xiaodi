@@ -11,11 +11,14 @@ import SwiftUI
 struct DirectChatView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var draft = ""
     @State private var streamingText = ""
     @State private var isStreaming = false
     @State private var errorMessage: String?
     @State private var streamTask: Task<Void, Never>?
+    /// 按住圆球时的手势方向（决定上方显示「取消」还是「滑到这里 转文字」）
+    @State private var voiceSlide: VoiceSlideMode = .none
 
     /// 直连上下文里给模型的身份。远程（电脑端）身份由 DSH 自己管，这里只管直连。
     private var systemPrompt: DirectChatMessage {
@@ -38,6 +41,12 @@ struct DirectChatView: View {
             inputBar
         }
         .onDisappear { streamTask?.cancel() }
+        // 「向右上滑 = 转文字」：识别结果填进输入框，不直接发送
+        .onChange(of: store.voiceDraftToComposer) { _, text in
+            guard let text, !text.isEmpty else { return }
+            draft = text
+            store.voiceDraftToComposer = nil
+        }
     }
 
     // MARK: - 欢迎态
@@ -137,32 +146,84 @@ struct DirectChatView: View {
     // MARK: - 输入
 
     private var inputBar: some View {
-        HStack(spacing: 9) {
-            TextField("说点什么…", text: $draft, axis: .vertical)
-                .lineLimit(1...5)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 13)
-                .padding(.vertical, 9)
-                .background(Color(uiColor: .secondarySystemBackground),
-                            in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .submitLabel(.send)
-                .onSubmit { send() }
-                .disabled(isStreaming)
-
-            Button {
-                if isStreaming { stop() } else { send() }
-            } label: {
-                Image(systemName: isStreaming ? "stop.fill" : "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(sendDisabled ? Color.secondary : Color.accentColor)
+        VStack(spacing: 0) {
+            // 手势胶囊：**只按住圆球时才出现**（不按不出现 —— 用户 2026-10-10 明确）
+            if store.voice.state == .listening {
+                voiceGestures
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 10)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-            .disabled(sendDisabled)
-            .accessibilityLabel(isStreaming ? "停止" : "发送")
+
+            HStack(spacing: 9) {
+                // 语音球：按住说话（左上滑取消 / 右上滑转文字）
+                SiriMicButton(
+                    voice: store.voice,
+                    diameter: 38,
+                    reduceMotion: reduceMotion,
+                    onSlideModeChange: { voiceSlide = $0 }
+                )
+
+                TextField("说点什么…", text: $draft, axis: .vertical)
+                    .lineLimit(1...5)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 9)
+                    .background(Color(uiColor: .secondarySystemBackground),
+                                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .submitLabel(.send)
+                    .onSubmit { send() }
+                    .disabled(isStreaming)
+
+                Button {
+                    if isStreaming { stop() } else { send() }
+                } label: {
+                    Image(systemName: isStreaming ? "stop.fill" : "arrow.up.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(sendDisabled ? Color.secondary : Color.accentColor)
+                }
+                .disabled(sendDisabled)
+                .accessibilityLabel(isStreaming ? "停止" : "发送")
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
+        .animation(.easeOut(duration: 0.18), value: store.voice.state)
         .background(.thinMaterial)
+    }
+
+    /// 按住说话时上方的两块深色胶囊（照用户给的参考图：左「取消」/ 右更宽的「滑到这里 转文字」）
+    private var voiceGestures: some View {
+        HStack(spacing: 14) {
+            Text("取消")
+                .font(.system(size: 15, weight: .600))
+                .foregroundStyle(.white)
+                .padding(.vertical, 15)
+                .padding(.horizontal, 22)
+                .frame(minWidth: 88)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(voiceSlide == .cancel
+                              ? Color(red: 0.84, green: 0.30, blue: 0.29)
+                              : Color(red: 0.12, green: 0.13, blue: 0.16).opacity(0.80))
+                )
+
+            Text("滑到这里 转文字")
+                .font(.system(size: 15, weight: .600))
+                .foregroundStyle(.white)
+                .padding(.vertical, 15)
+                .padding(.horizontal, 30)
+                .frame(minWidth: 88)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(voiceSlide == .toText
+                              ? DSHColor.ocean
+                              : Color(red: 0.12, green: 0.13, blue: 0.16).opacity(0.80))
+                )
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.easeOut(duration: 0.15), value: voiceSlide)
     }
 
     private var sendDisabled: Bool {

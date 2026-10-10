@@ -14,14 +14,28 @@
 
 import SwiftUI
 
+/// 按住说话时手指上滑的方向（Hestia 语音手势）
+enum VoiceSlideMode: Equatable {
+    /// 没滑 / 滑的不够远 —— 松手即发送
+    case none
+    /// 向左上滑 —— 松手取消这段录音
+    case cancel
+    /// 向右上滑 —— 松手把说的话转成文字填进输入框（不发送）
+    case toText
+}
+
 struct SiriMicButton: View {
     @ObservedObject var voice: VoiceInputController
     /// 图标尺寸（默认 44 = 系统最小触控区）
     var diameter: CGFloat = 44
     /// 是否降低动效（无障碍）
     var reduceMotion: Bool = false
+    /// 按住中手势方向变化时回调 —— 宿主页面用它显示「取消 / 滑到这里 转文字」
+    var onSlideModeChange: ((VoiceSlideMode) -> Void)? = nil
 
     @State private var pulse = false
+    /// 按住中的上滑手势方向（用户 2026-10-10：左上=取消 / 右上=转文字）
+    @State private var slideMode: VoiceSlideMode = .none
 
     private var isRecording: Bool { voice.state == .listening }
     private var isTranscribing: Bool { voice.state == .transcribing }
@@ -62,21 +76,51 @@ struct SiriMicButton: View {
         // 按住说话 —— 这是整个交互的核心
         .onLongPressGesture(
             minimumDuration: 0.12,      // 轻点不误触发
-            maximumDistance: 40,        // 手指滑出 40pt 内仍算按住
+            maximumDistance: 60,        // 手指滑出 60pt 内仍算按住（上滑手势要留余量）
             pressing: { pressing in
                 if pressing {
                     voice.beginRecording()
-                } else {
+                } else if slideMode == .none {
+                    // 普通松手 = 说完发送；带方向的松手由 DragGesture 的 onEnded 处置
                     voice.endRecording()
                 }
             },
             perform: { }
         )
-        // 真的松手（滑出后抬起）也要结束，不能卡在 listening
+        // 上滑手势：按住中向左上滑 = 取消；向右上滑 = 转文字（用户 2026-10-10 定）
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    guard voice.isHeld else { return }
+                    let dx = value.translation.width
+                    let dy = value.translation.height
+                    let mode: VoiceSlideMode
+                    if dy < -46 && dx < -30 {
+                        mode = .cancel
+                    } else if dy < -46 && dx > 30 {
+                        mode = .toText
+                    } else {
+                        mode = .none
+                    }
+                    if mode != slideMode {
+                        slideMode = mode
+                        onSlideModeChange?(mode)
+                    }
+                }
                 .onEnded { _ in
-                    if voice.isHeld { voice.endRecording() }
+                    let mode = slideMode
+                    slideMode = .none
+                    onSlideModeChange?(.none)
+                    switch mode {
+                    case .cancel:
+                        voice.cancelRecording()
+                    case .toText:
+                        // 转文字：把识别结果填进输入框（不直接发送）
+                        voice.routeTranscriptToDraft = true
+                        if voice.isHeld { voice.endRecording() }
+                    case .none:
+                        if voice.isHeld { voice.endRecording() }
+                    }
                 }
         )
         .accessibilityLabel(String(localized: "按住说话", defaultValue: "按住说话"))
