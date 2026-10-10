@@ -53,16 +53,24 @@ struct DirectChatView: View {
 
     private var welcome: some View {
         VStack(spacing: 14) {
-            Image(systemName: "water.waves")
-                .font(.system(size: 44, weight: .light))
-                .foregroundStyle(.secondary)
-            Text("你的独立 agent")
-                .font(.title3.weight(.semibold))
-            Text("模型配好就能直接聊；和电脑端共用一颗大脑。")
+            // 用户 2026-10-10：这里改成「图标 + 名字 + 准备就绪」—— 图标就是 App 图标，
+            // 让它当视觉主角（主题 = 图标那套黑白线稿风格）。
+            Image("HestiaMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 104, height: 104)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.10), radius: 12, y: 4)
+            Text("Hestia")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.primary)
+            Text("准备就绪")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 34)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
