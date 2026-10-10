@@ -47,7 +47,7 @@ struct DirectChatView: View {
             Image(systemName: "water.waves")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("朱小姐 · 直连模式")
+            Text("直连模式")
                 .font(.title3.weight(.semibold))
             Text("没连上电脑时也能直接聊。回答来自你配置的模型端点。")
                 .font(.subheadline)
@@ -138,7 +138,7 @@ struct DirectChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 9) {
-            TextField("和朱小姐说点什么…", text: $draft, axis: .vertical)
+            TextField("说点什么…", text: $draft, axis: .vertical)
                 .lineLimit(1...5)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 13)

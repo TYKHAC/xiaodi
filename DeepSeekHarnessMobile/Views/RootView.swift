@@ -13,7 +13,7 @@ struct RootView: View {
             .equatable()
             // 直接观察当前 AppStore，避免外层主机容器漏掉外观设置更新。
             .preferredColorScheme(store.interfaceStyle.colorScheme)
-            .alert("朱小姐", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
+            .alert("提示", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
                 Button(String(localized: "好"), role: .cancel) { store.lastError = nil }
             } message: { Text(store.lastError ?? "") }
             .onChange(of: scenePhase) { _, phase in
@@ -241,13 +241,15 @@ private struct RootNavigationHost: View, Equatable {
     private func drawerPanel(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
+                // 朱小姐：品牌字样只留一处（首页顶栏）—— 抽屉这里只放水波纹图形，
+                // 用户 2026-10-10「app内不要有那么多朱小姐字样」。
                 HStack(spacing: 8) {
                     Image(systemName: "water.waves")
-                        .font(.system(size: 20, weight: .semibold))
-                    Text("朱小姐").font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(DSHColor.ocean)
                 }
                 .padding(.leading, 12)
-                .padding(.bottom, 12)
+                .padding(.bottom, 14)
 
                 drawerItem("新会话", icon: {
                     Image(systemName: "square.and.pencil")
@@ -283,7 +285,8 @@ private struct RootNavigationHost: View, Equatable {
                 VStack(spacing: 0) {
                     ForEach(drawerDirectSessions) { local in
                         directSessionRow(local)
-                    }                    ForEach(drawerSessions) { session in
+                    }
+                    ForEach(drawerSessions) { session in
                         drawerSessionRow(session)
                             .contentShape(Rectangle())
                             .onTapGesture {

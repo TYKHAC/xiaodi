@@ -600,7 +600,7 @@ struct ConversationView: View {
             Image(systemName: "water.waves")
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(DSHColor.ocean)
-            Text("朱小姐 · 待命").font(.title3.weight(.semibold))
+            Text("待命").font(.title3.weight(.semibold))
             Text("发送任务后，工具调用、推理进度和最终回复会实时返回。")
                 .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
@@ -1770,7 +1770,7 @@ struct ConversationView: View {
         guard let selection = currentModelSelection else { return nil }
         return modelGroups.first(where: { $0.id == selection.provider })?.models.first(where: { $0.id == selection.model })
     }
-    private var currentModelTitle: String { currentModelItem?.name ?? currentModelSelection?.model ?? "朱小姐" }
+    private var currentModelTitle: String { currentModelItem?.name ?? currentModelSelection?.model ?? "默认模型" }
     private var currentEfforts: [GatewayReasoningEffort] { currentModelItem?.reasoning?.efforts ?? [] }
     private var currentEffortTitle: String? {
         guard let id = currentModelSelection?.reasoningEffort else { return nil }

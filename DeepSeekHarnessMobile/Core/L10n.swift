@@ -33,7 +33,7 @@ enum L10n {
     // keeps working under any localization.
 
     static let userMessageTitle = String(localized: "你")
-    static let streamingAssistantTitle = String(localized: "朱小姐 · 正在生成")
+    static let streamingAssistantTitle = String(localized: "正在生成…")
     static let streamingReasoningTitle = String(localized: "Think · 正在推理")
     static let assemblingToolTitle = String(localized: "Tool Call · 正在组装")
     static let toolResultDoneTitle = String(localized: "工具完成")

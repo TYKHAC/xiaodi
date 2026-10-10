@@ -55,7 +55,7 @@ struct BrainBridgeView: View {
         Section {
             TextEditor(text: $draft)
                 .frame(minHeight: 96)
-            TextField("标签（逗号分隔，如 朱小姐,进度）", text: $tagsText)
+            TextField("标签（逗号分隔，如 项目,进度）", text: $tagsText)
                 .textInputAutocapitalization(.never)
             Button {
                 capture()

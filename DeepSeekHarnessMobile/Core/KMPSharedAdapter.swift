@@ -155,7 +155,7 @@ final class KMPConversationStoreAdapter {
             context: L10n.contextInjectionTitle(""),
             streamingAssistant: L10n.streamingAssistantTitle,
             streamingReasoning: L10n.streamingReasoningTitle,
-            finalAssistant: "朱小姐",
+            finalAssistant: "助手",
             finalReasoning: "Think",
             assemblingTool: L10n.assemblingToolTitle,
             toolResultDone: L10n.toolResultDoneTitle,

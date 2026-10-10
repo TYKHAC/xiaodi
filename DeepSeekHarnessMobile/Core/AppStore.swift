@@ -1921,9 +1921,9 @@ final class AppStore: ObservableObject {
             )
         }
     }
-    func title(for sessionId: String) -> String { sessions.first(where: { $0.id == sessionId })?.title ?? "朱小姐" }
+    func title(for sessionId: String) -> String { sessions.first(where: { $0.id == sessionId })?.title ?? "新会话" }
     private func liveActivitySourceLabel(for sessionID: String) -> String {
-        let host = gatewayDisplayName.isEmpty ? "朱小姐" : gatewayDisplayName
+        let host = gatewayDisplayName.isEmpty ? "助手" : gatewayDisplayName
         guard let workspace = workspaces.first(where: { $0.sessionIds.contains(sessionID) }) else { return host }
         let workspaceName = workspace.title.isEmpty
             ? URL(fileURLWithPath: workspace.path).lastPathComponent
