@@ -574,7 +574,7 @@
         }
       }
     },
-    "正在生成": {
+    "正在生成…": {
       "extractionState": "stale",
       "localizations": {
         "en": {
