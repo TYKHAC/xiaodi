@@ -77,7 +77,7 @@ private struct GatewaySwitcherSheet: View {
                                         .font(.caption)
                                         .foregroundStyle(
                                             hosts.activeID == profile.id
-                                                ? Color.accentColor
+                                                ? ZhuTheme.accent
                                                 : Color(uiColor: .secondaryLabel)
                                         )
                                 }

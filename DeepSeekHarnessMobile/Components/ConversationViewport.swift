@@ -1998,25 +1998,20 @@ private final class UserMessageCell: StableSelfSizingCollectionViewCell {
             : UIImage(named: "CopyMessage")?.withRenderingMode(.alwaysTemplate)
         copyButton.setImage(image, for: .normal)
         copyButton.tintColor = copied
-            ? UIColor(red: 0.18, green: 0.42, blue: 0.9, alpha: 1)
+            ? .label
             : .secondaryLabel
         copyButton.accessibilityLabel = copied ? String(localized: "已复制") : String(localized: "复制正文")
     }
 
     private func updateBubbleColors() {
+        // 黑白冷酷（用户 2026-10-10 敲定主题）：用户气泡 = 近黑/纯白的淡染，不再淡蓝。
         let dark = traitCollection.userInterfaceStyle == .dark
-        bubbleView.backgroundColor = UIColor(
-            red: 0.18,
-            green: 0.42,
-            blue: 0.9,
-            alpha: dark ? 0.24 : 0.11
-        )
-        bubbleView.layer.borderColor = UIColor(
-            red: 0.18,
-            green: 0.42,
-            blue: 0.9,
-            alpha: dark ? 0.34 : 0.08
-        ).cgColor
+        bubbleView.backgroundColor = dark
+            ? UIColor(white: 1.0, alpha: 0.16)
+            : UIColor(white: 0.07, alpha: 0.08)
+        bubbleView.layer.borderColor = (dark
+            ? UIColor(white: 1.0, alpha: 0.20)
+            : UIColor(white: 0.07, alpha: 0.12)).cgColor
     }
 }
 

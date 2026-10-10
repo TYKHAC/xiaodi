@@ -162,14 +162,15 @@ struct SiriMicButton: View {
     // 见 PearlOrbView）；状态区别靠球的动效 + scaleEffect(1.16) + 波纹 + 文字标签。
 
     /// 球体外的一层呼吸柔光 —— 高级感主要来自它（模糊的光，而不是清晰的圈）
+    /// 主题黑白：柔光也是灰白，不带任何色相。
     private var softGlow: some View {
         Circle()
             .fill(
                 RadialGradient(
                     colors: [
-                        Color(red: 0.42, green: 0.64, blue: 1.00).opacity(0.55),
-                        Color(red: 0.72, green: 0.45, blue: 1.00).opacity(0.26),
-                        Color(red: 1.00, green: 0.45, blue: 0.78).opacity(0.10),
+                        Color(white: 0.98).opacity(0.45),
+                        Color(white: 0.70).opacity(0.20),
+                        Color(white: 0.50).opacity(0.08),
                         .clear,
                     ],
                     center: .center,
@@ -194,10 +195,10 @@ struct SiriMicButton: View {
             .strokeBorder(
                 AngularGradient(
                     colors: [
-                        Color(red: 0.45, green: 0.72, blue: 1.00).opacity(0.0),
-                        Color(red: 0.55, green: 0.80, blue: 1.00).opacity(0.90),
-                        Color(red: 0.78, green: 0.55, blue: 1.00).opacity(0.75),
-                        Color(red: 0.45, green: 0.72, blue: 1.00).opacity(0.0),
+                        Color.white.opacity(0.0),
+                        Color(white: 0.92).opacity(0.85),
+                        Color(white: 0.70).opacity(0.70),
+                        Color.white.opacity(0.0),
                     ],
                     center: .center,
                     angle: .degrees(140)
@@ -311,13 +312,13 @@ struct PearlOrbView: View {
         let c = CGPoint(x: size.width / 2, y: size.height / 2)
         let r = min(size.width, size.height) / 2
 
-        // 1) 深色球体底
+        // 1) 深色球体底（中性近黑，不用蓝紫）
         ctx.fill(
             Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
             with: .radialGradient(
                 Gradient(colors: [
-                    Color(red: 0.20, green: 0.22, blue: 0.38),
-                    Color(red: 0.04, green: 0.05, blue: 0.12),
+                    Color(white: 0.24),
+                    Color(white: 0.04),
                 ]),
                 center: CGPoint(x: c.x - r * 0.25, y: c.y - r * 0.30),
                 startRadius: r * 0.05,
@@ -326,13 +327,14 @@ struct PearlOrbView: View {
         )
 
         // 2) 流动光带（模糊 + 叠加，四团不同色相各自转）
+        // 主题「黑白冷酷」+「跟图标差不多风格」→ 光带改成**银白/冷灰**，不用彩色。
         ctx.addFilter(.blur(radius: r * 0.30))
         ctx.blendMode = .plusLighter
         let blobs: [(Color, CGFloat, Double, Double)] = [
-            (Color(red: 0.25, green: 0.55, blue: 1.00), 0.50, 0.42, 0.95),   // 蓝
-            (Color(red: 1.00, green: 0.35, blue: 0.75), 0.42, -0.31, 0.80),  // 粉
-            (Color(red: 0.45, green: 0.95, blue: 0.90), 0.36, 0.63, 0.62),   // 青
-            (Color(red: 0.65, green: 0.40, blue: 1.00), 0.32, -0.78, 0.58),  // 紫
+            (Color(white: 0.98), 0.50, 0.42, 0.95),    // 银白
+            (Color(white: 0.72), 0.42, -0.31, 0.70),   // 亮灰
+            (Color(white: 0.86), 0.36, 0.63, 0.60),    // 冷白
+            (Color(white: 0.55), 0.32, -0.78, 0.48),   // 深灰
         ]
         for (color, distance, spin, alpha) in blobs {
             let a = t * speed * spin
@@ -352,7 +354,7 @@ struct PearlOrbView: View {
             with: .radialGradient(
                 Gradient(colors: [
                     Color.white.opacity(0.95 * glow),
-                    Color(red: 0.70, green: 0.85, blue: 1.00).opacity(0.28 * glow),
+                    Color(white: 0.85).opacity(0.28 * glow),
                     .clear,
                 ]),
                 center: c,

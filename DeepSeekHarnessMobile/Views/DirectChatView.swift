@@ -180,7 +180,7 @@ struct DirectChatView: View {
                 } label: {
                     Image(systemName: isStreaming ? "stop.fill" : "arrow.up.circle.fill")
                         .font(.system(size: 30))
-                        .foregroundStyle(sendDisabled ? Color.secondary : Color.accentColor)
+                        .foregroundStyle(sendDisabled ? Color.secondary : ZhuTheme.accent)
                 }
                 .disabled(sendDisabled)
                 .accessibilityLabel(isStreaming ? "停止" : "发送")
