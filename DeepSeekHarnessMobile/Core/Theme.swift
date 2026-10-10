@@ -55,7 +55,9 @@ struct DeepOceanBackground: View {
                 pearlBlobs.opacity(0.24)
             } else {
                 Color(uiColor: .systemBackground)
-                pearlBlobs.opacity(0.6)
+                // 浅色：珍珠光斑必须压得很淡 —— 0.6 那版会把黑色标题和灰色副标题
+                // 一起糊成看不见（用户 2026-10-10「这个主题字都看不到了」）。
+                pearlBlobs.opacity(0.3)
             }
         }
         .ignoresSafeArea()

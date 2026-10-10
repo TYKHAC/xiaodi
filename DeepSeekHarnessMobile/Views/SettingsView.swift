@@ -60,56 +60,9 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section {
-                NavigationLink {
-                    AgentPresetSelectionView()
-                } label: {
-                    DefaultConfigurationRow(
-                        title: String(localized: "Agent 预设"),
-                        value: selectedPresetName,
-                        isLoading: defaultsAreLoading
-                    )
-                }
-                .disabled(!store.gateway.state.isConnected)
-
-                NavigationLink {
-                    DefaultModelSelectionView()
-                } label: {
-                    DefaultConfigurationRow(
-                        title: String(localized: "默认模型"),
-                        value: defaultModelValueText,
-                        isLoading: defaultModelIsLoading
-                    )
-                }
-                .disabled(!store.gateway.state.isConnected)
-
-                Menu {
-                    ForEach(store.permissionDefaultOptions.map(DefaultPermissionChoice.init)) { option in
-                        Button {
-                            pendingPermission = option
-                        } label: {
-                            if option.id == store.permissionDefault {
-                                Label(option.title, systemImage: "checkmark")
-                            } else {
-                                Text(option.title)
-                            }
-                        }
-                    }
-                } label: {
-                    DefaultConfigurationRow(
-                        title: String(localized: "权限"),
-                        value: selectedPermissionName,
-                        isLoading: defaultsAreLoading
-                    )
-                    .contentShape(Rectangle())
-                }
-                .tint(.primary)
-                .disabled(!store.gateway.state.isConnected || store.defaultConfigurationLoadingKinds.contains("set-default"))
-            } header: {
-                Text("新会话默认配置")
-            } footer: {
-                Text("与 WebUI 使用同一份部署级设置。修改只影响之后新建的会话，运行中的会话保持启动时的配置。")
-            }
+            // 朱小姐：原来的「新会话默认配置」（Agent 预设 / 默认模型 / 权限）是电脑端
+            // 部署级设置，手机独立 agent 用不上 —— 用户 2026-10-10 说设置不专业、有
+            // 多余的设置，整段移除（相关 store 接口保留，将来要接再放回）。
 
             Section {
                 Picker("消息字号", selection: $store.messageFontScale) {
@@ -119,7 +72,7 @@ struct SettingsView: View {
                     Text("最大").tag(1.4)
                 }
                 .pickerStyle(.segmented)
-                Text("朱小姐正在整理今天的学习笔记，稍后会贴到大脑里。")
+                Text("这是消息正文的字号预览。")
                     .font(.system(size: 15 * store.messageFontScale))
                     .foregroundStyle(.secondary)
             } header: {
@@ -293,30 +246,9 @@ struct SettingsView: View {
                 }
                 Button("Ping 网关") { store.gateway.ping() }
             } header: {
-                Text("Mobile Gateway")
+                Text("远程连接（连电脑）")
             } footer: {
                 Text("远程模式是手动的：开关关闭时，App 启动不会连电脑、也不会弹连接失败；要远程就连一下（或左划栏 → 配对设备）。不连时用直连模式照样聊。")
-            }
-
-            if let host = store.hostSnapshot {
-                Section("电脑端信息") {
-                    LabeledContent("版本", value: host.version ?? "—")
-                    LabeledContent("Provider", value: host.provider ?? "—")
-                    LabeledContent("Model", value: host.model ?? "—")
-                    LabeledContent("已连接会话", value: "\(host.attachedSessions ?? 0)")
-                    if let cwd = host.cwd {
-                        LabeledContent {
-                            Text(cwd)
-                                .font(.caption.monospaced())
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .textSelection(.enabled)
-                        } label: {
-                            Text("cwd")
-                        }
-                    }
-                }
             }
 
             Section {
@@ -326,16 +258,8 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.navigationLink)
-                Picker("语言", selection: $store.appLanguage) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Text(verbatim: language.title).tag(language)
-                    }
-                }
-                .pickerStyle(.navigationLink)
             } header: {
                 Text("外观")
-            } footer: {
-                Text("语言设置将在重新启动应用后生效。")
             }
         }
         .navigationTitle("设置")

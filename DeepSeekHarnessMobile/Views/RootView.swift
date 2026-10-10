@@ -73,16 +73,23 @@ private struct RootNavigationHost: View, Equatable {
                 // 注意：不裁剪不加阴影 —— 栈裁剪会切掉 Workspace 用 offset
                 // 手动延伸到状态栏的绘制（light 模式状态栏会露白）。
                 NavigationStack(path: $navigationPath) {
-                    WorkspaceView(
-                        onOpenSession: { openConversationFromList($0) },
-                        onNewSession: { startNewConversation() },
-                        onSettings: {
-                            newConversationTask?.cancel()
-                            navigate(to: .settings)
-                        },
-                        onPlugins: { navigate(to: .plugins) },
-                        onScheduledTasks: { navigate(to: .scheduledTasks) }
-                    )
+                    // 朱小姐：首页 = 纯对话区（用户 2026-10-10 明确「这是首页，我不要这个首页，
+                    // 直接删除掉」）。原来的 WorkspaceView 落地页（未分组 / N 个未归类会话 /
+                    // 新建会话 / 搜索会话内容 / 连接失败红字）不再作为根页面 ——
+                    // 会话列表在左划栏里，没连电脑时直连聊天直接盖在对话页上。
+                    ConversationNavigationShell(
+                        header: rootConversationHeader,
+                        gateway: store.gateway,
+                        store: store,
+                        showsBackButton: false,
+                        onActivate: {
+                            if let sessionID = rootConversationHeader.sessionID {
+                                await store.activatePreparedConversation(sessionID: sessionID)
+                            }
+                        }
+                    ) {
+                        ConversationView()
+                    }
                     .navigationDestination(for: AppRoute.self) { route in
                         destination(for: route)
                     }
@@ -222,6 +229,14 @@ private struct RootNavigationHost: View, Equatable {
         }
     }
 
+    /// 根首页的对话头部：有选中会话就显示它，否则是「朱小姐」待命页
+    private var rootConversationHeader: ConversationNavigationHeader {
+        if let session = store.sessions.first(where: { $0.id == store.selectedSessionId }) {
+            return conversationHeader(for: session)
+        }
+        return ConversationNavigationHeader(sessionID: nil, title: "朱小姐", agentPresetTitle: "")
+    }
+
     @ViewBuilder
     private func drawerPanel(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
@@ -268,8 +283,7 @@ private struct RootNavigationHost: View, Equatable {
                 VStack(spacing: 0) {
                     ForEach(drawerDirectSessions) { local in
                         directSessionRow(local)
-                    }
-                    ForEach(drawerSessions) { session in
+                    }                    ForEach(drawerSessions) { session in
                         drawerSessionRow(session)
                             .contentShape(Rectangle())
                             .onTapGesture {
@@ -287,17 +301,6 @@ private struct RootNavigationHost: View, Equatable {
                             .padding(.vertical, 8)
                     }
                 }
-
-                sectionHeader("工作区")
-                drawerItem("全部会话 / 工作区", icon: {
-                    Image(systemName: "square.grid.2x2")
-                        .font(.system(size: 19, weight: .medium))
-                        .frame(width: 24)
-                }, action: {
-                    // 回到 NavigationStack 根（列表页），不推新路由
-                    navigationPath = []
-                    closeDrawer()
-                })
 
                 Spacer(minLength: 0)
 
@@ -1255,6 +1258,8 @@ private struct ConversationNavigationShell<Content: View>: View {
     let header: ConversationNavigationHeader
     let gateway: GatewayClient
     let store: AppStore
+    /// 根首页没有上级页面 → 不显示返回 chevron（用户 2026-10-10 首页改造）
+    var showsBackButton: Bool = true
     let onActivate: () async -> Void
     @ViewBuilder let content: () -> Content
     @State private var showsWorkspaceFiles = false
@@ -1280,16 +1285,18 @@ private struct ConversationNavigationShell<Content: View>: View {
             .navigationBarBackButtonHidden(true)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
-                            .frame(width: 44, height: 32, alignment: .leading)
-                            .contentShape(Rectangle())
+                if showsBackButton {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 17, weight: .semibold))
+                                .frame(width: 44, height: 32, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel(String(localized: "返回"))
                     }
-                    .accessibilityLabel(String(localized: "返回"))
                 }
                 if #available(iOS 26.0, *) {
                     ToolbarItem(placement: .topBarTrailing) {
