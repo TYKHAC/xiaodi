@@ -197,7 +197,7 @@ struct DirectChatView: View {
     private var voiceGestures: some View {
         HStack(spacing: 14) {
             Text("取消")
-                .font(.system(size: 15, weight: .600))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.vertical, 15)
                 .padding(.horizontal, 22)
@@ -210,7 +210,7 @@ struct DirectChatView: View {
                 )
 
             Text("滑到这里 转文字")
-                .font(.system(size: 15, weight: .600))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.vertical, 15)
                 .padding(.horizontal, 30)
