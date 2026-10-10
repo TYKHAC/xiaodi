@@ -69,6 +69,30 @@ for (const [name, p] of Object.entries(targets)) {
   notes.push(`${name}: 括号平衡检查通过 (${Object.values(d).join('/')})`);
 }
 
+// ---- 1.5 语句粘连（括号平衡抓不到的那一类）----
+// 2026-10-10 教训：一次"空操作"式编辑（old_string 带行尾换行、new_string 不带）
+// 把 `}` 和下一行粘成了一行 → Xcode 报 "consecutive statements on a line must be
+// separated by ';'"，而括号计数完全正确、STATIC 照样 PASS。这里补上检测。
+const SPLICE_TOKENS = [
+  'ForEach', 'Section', 'VStack', 'HStack', 'ZStack', 'Group', 'List', 'ScrollView',
+  'LazyVStack', 'LazyHStack', 'Spacer', 'Divider', 'Text', 'Image', 'Label', 'Button',
+  'Toggle', 'Picker', 'Menu', 'NavigationLink', 'ToolbarItem', 'ToolbarSpacer',
+  'if', 'else', 'let', 'var', 'return', 'guard', 'switch', 'for', 'while',
+];
+const splicePattern = new RegExp(`\\}\\s{2,}(${SPLICE_TOKENS.join('|')})\\b`);
+for (const [name, p] of Object.entries(targets)) {
+  if (!name.endsWith('.swift')) continue;
+  const t = read(p);
+  if (t == null) continue;
+  t.split('\n').forEach((line, idx) => {
+    const code = line.replace(/\/\/.*$/, '');
+    const m = code.match(splicePattern);
+    if (m) {
+      problems.push(`${name}:${idx + 1}: 疑似两条语句粘在一行（'} ${m[1]}'）—— 检查是否少了换行`);
+    }
+  });
+}
+
 // ---- 2. 必需 import ----
 const voice = read(targets['Core/VoiceInputController.swift']) || '';
 const mic = read(targets['Components/SiriMicButton.swift']) || '';
