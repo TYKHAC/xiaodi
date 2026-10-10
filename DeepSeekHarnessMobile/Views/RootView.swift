@@ -1298,6 +1298,21 @@ private struct ConversationNavigationShell<Content: View>: View {
                         .accessibilityLabel(String(localized: "返回"))
                     }
                 }
+                // 朱小姐：顶栏静音键（一键开关朗读回复）。它原来长在 WorkspaceView 里，
+                // 首页换成对话页后必须搬到对话外壳，否则用户再也找不到朗读开关。
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        store.speakRepliesEnabled.toggle()
+                    } label: {
+                        Image(systemName: store.speakRepliesEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .frame(width: 32, height: 32)
+                    }
+                    .accessibilityLabel(store.speakRepliesEnabled
+                                        ? String(localized: "关闭朗读回复")
+                                        : String(localized: "开启朗读回复"))
+                }
+
                 if #available(iOS 26.0, *) {
                     ToolbarItem(placement: .topBarTrailing) {
                         ConversationNavigationStatus(
