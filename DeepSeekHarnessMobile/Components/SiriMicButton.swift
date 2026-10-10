@@ -34,10 +34,16 @@ struct SiriMicButton: View {
             voice.togglePrimaryButton()
         } label: {
             ZStack {
-                // 录音时的呼吸波纹（两圈，错开相位）
-                if isRecording && !reduceMotion {
-                    ring(scale: 1.0, opacity: 0.45, delay: 0)
-                    ring(scale: 1.35, opacity: 0.22, delay: 0.35)
+                // 高级感波纹 = 柔光晕 + 渐变细环（不再是硬边圆环，用户 2026-10-10
+                // 说「波纹不高级」）。球体外面先铺一层呼吸柔光，再让两条极细的
+                // 渐变环缓慢向外扩散、边缘就淡掉 —— 看起来像光在散开，不是画圈。
+                if !reduceMotion {
+                    softGlow
+                    if isRecording || isTranscribing {
+                        halo(scale: 1.02, opacity: 0.55, delay: 0)
+                        halo(scale: 1.30, opacity: 0.34, delay: 0.75)
+                        halo(scale: 1.58, opacity: 0.18, delay: 1.5)
+                    }
                 }
 
                 // Hestia：圆球本身就是全部视觉 —— 任何状态下都显示这颗球，
@@ -111,25 +117,64 @@ struct SiriMicButton: View {
     // Hestia：不放图标 —— 圆球本身就是全部视觉（Siri 风格的深色球 + 流动光带，
     // 见 PearlOrbView）；状态区别靠球的动效 + scaleEffect(1.16) + 波纹 + 文字标签。
 
+    /// 球体外的一层呼吸柔光 —— 高级感主要来自它（模糊的光，而不是清晰的圈）
+    private var softGlow: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [
+                        Color(red: 0.42, green: 0.64, blue: 1.00).opacity(0.55),
+                        Color(red: 0.72, green: 0.45, blue: 1.00).opacity(0.26),
+                        Color(red: 1.00, green: 0.45, blue: 0.78).opacity(0.10),
+                        .clear,
+                    ],
+                    center: .center,
+                    startRadius: diameter * 0.30,
+                    endRadius: diameter * 1.00
+                )
+            )
+            .frame(width: diameter * 2.1, height: diameter * 2.1)
+            .blur(radius: 7)
+            .opacity(isRecording || isTranscribing ? 0.95 : 0.5)
+            .scaleEffect(pulse ? 1.06 : 0.94)
+            .animation(
+                .easeInOut(duration: 1.8).repeatForever(autoreverses: true),
+                value: pulse
+            )
+            .allowsHitTesting(false)
+    }
+
+    /// 向外扩散的一条柔光环：细、模糊、带渐变（末端淡出），所以不像"画的圈"
+    private func halo(scale: CGFloat, opacity: Double, delay: Double) -> some View {
+        Circle()
+            .strokeBorder(
+                AngularGradient(
+                    colors: [
+                        Color(red: 0.45, green: 0.72, blue: 1.00).opacity(0.0),
+                        Color(red: 0.55, green: 0.80, blue: 1.00).opacity(0.90),
+                        Color(red: 0.78, green: 0.55, blue: 1.00).opacity(0.75),
+                        Color(red: 0.45, green: 0.72, blue: 1.00).opacity(0.0),
+                    ],
+                    center: .center,
+                    angle: .degrees(140)
+                ),
+                lineWidth: 1.1
+            )
+            .frame(width: diameter, height: diameter)
+            .blur(radius: 1.8)
+            .scaleEffect(pulse ? scale : 0.98)
+            .opacity(pulse ? 0 : opacity)
+            .animation(
+                .easeOut(duration: 2.6).repeatForever(autoreverses: false).delay(delay),
+                value: pulse
+            )
+            .allowsHitTesting(false)
+    }
+
     private var shadowColor: Color {
         isRecording || isTranscribing
             ? Color(red: 0.35, green: 0.55, blue: 0.98).opacity(0.55)
             : .clear
-    }
-
-    private func ring(scale: CGFloat, opacity: Double, delay: Double) -> some View {
-        Circle()
-            .stroke(
-                Color(red: 0.35, green: 0.60, blue: 0.98),
-                lineWidth: 2
-            )
-            .frame(width: diameter, height: diameter)
-            .scaleEffect(pulse ? scale + 0.28 : scale)
-            .opacity(pulse ? 0 : opacity)
-            .animation(
-                reduceMotion ? nil : .easeOut(duration: 1.4).repeatForever(autoreverses: false).delay(delay),
-                value: pulse
-            )
     }
 }
 
