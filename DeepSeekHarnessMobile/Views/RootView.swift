@@ -550,9 +550,10 @@ private struct RootNavigationHost: View, Equatable {
         let sorted = store.sessions.sorted { $0.lastActivity > $1.lastActivity }
         let target = store.sessions.first { $0.id == store.selectedSessionId } ?? sorted.first
         guard let session = target else {
-            // 用户要求「打开就是对话」：一个会话都没有（还没连上/全新安装）也进对话，
-            // 空态 hero 由 ConversationView 渲染。连上后真实会话到达会自动替换进来
-            // （这里刻意不设 primaryChoiceMade —— 真会话来了还要能接管）。
+            // 用户要求「打开就是对话」：一个会话都没有也进对话，空态 hero 由 ConversationView 渲染。
+            // 但**只有连着电脑时**才 push 那层「新对话」路由 —— 否则根页面被盖住、顶栏还会多出
+            // 一个没意义的返回箭头（用户 2026-10-11 指出）。未连接时留在根（根就是 agent 聊天页）。
+            guard store.gateway.state.isConnected else { return }
             navigationPath = [.conversation(conversationHeader(for: nil))]
             return
         }
