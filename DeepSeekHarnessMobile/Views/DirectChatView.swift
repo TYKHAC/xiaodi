@@ -21,6 +21,11 @@ struct DirectChatView: View {
     @State private var voiceSlide: VoiceSlideMode = .none
     /// 底部栏模式：false = 语音模式（圆球居中），true = 键盘模式（输入框）
     @State private var keyboardMode = false
+    /// 相机（用户 2026-10-11 第 2 项）：点按 = 拍照，长按 = 下方弹图库
+    @State private var showCamera = false
+    @State private var showPhotoLibrary = false
+    /// 待发送的图片（先挂缩略图；送模型的链路后续接）
+    @State private var pendingImage: UIImage?
 
     /// 直连上下文里给模型的身份。远程（电脑端）身份由 DSH 自己管，这里只管直连。
     private var systemPrompt: DirectChatMessage {
@@ -40,7 +45,19 @@ struct DirectChatView: View {
             if let errorMessage {
                 errorBar(errorMessage)
             }
+            if let pendingImage {
+                pendingImageBar(pendingImage)
+            }
             inputBar
+        }
+        // 相机 / 相册（第 2 项）
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraCapturePicker { image in pendingImage = image }
+                .ignoresSafeArea()
+        }
+        .sheet(isPresented: $showPhotoLibrary) {
+            PhotoLibraryPicker { image in pendingImage = image }
+                .ignoresSafeArea()
         }
         .onDisappear { streamTask?.cancel() }
         // 「向右上滑 = 转文字」：识别结果填进输入框，不直接发送
@@ -148,6 +165,35 @@ struct DirectChatView: View {
         }
     }
 
+    /// 待发送图片的缩略图条（第 2 项）：拍完/选完图先挂在这儿，可点 × 去掉
+    private func pendingImageBar(_ image: UIImage) -> some View {
+        HStack(spacing: 10) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
+                )
+            Text("待发送图片")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button {
+                pendingImage = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("移除图片")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
     private func errorBar(_ text: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -182,6 +228,16 @@ struct DirectChatView: View {
             }
 
             HStack(spacing: 9) {
+                // 相机（最左）：点按 = 拍照；长按 = 下方弹图库（用户 2026-10-11 第 2 项）
+                Image(systemName: "camera")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(width: 40, height: 40)
+                    .contentShape(Rectangle())
+                    .onTapGesture { showCamera = true }
+                    .onLongPressGesture(minimumDuration: 0.35) { showPhotoLibrary = true }
+                    .accessibilityLabel("拍照或选图")
+
                 // 语音球：按住说话（左上滑取消 / 右上滑转文字）
                 // 底部栏双模式（用户 2026-10-11 定案）：
                 //   语音模式 = 圆球居中贴底（按住说话）；键盘模式 = 输入框 + 发送

@@ -4146,3 +4146,40 @@ struct CameraCapturePicker: UIViewControllerRepresentable {
         }
     }
 }
+
+/// 系统相册（用户 2026-10-11 第 2 项：长按相机键 = 下方弹出图库）。
+/// 和上面的相机一样，同一文件内新增，避免 pbxproj 四处登记。
+struct PhotoLibraryPicker: UIViewControllerRepresentable {
+    var onPick: (UIImage) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        private let parent: PhotoLibraryPicker
+
+        init(_ parent: PhotoLibraryPicker) { self.parent = parent }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.onPick(image)
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
