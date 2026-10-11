@@ -1310,6 +1310,9 @@ private struct ConversationNavigationShell<Content: View>: View {
                             .font(store.nameFont.font(size: 22))
                             .tracking(store.nameFont.tracking)
                             .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            // 右边有三个 trailing 项，不加 fixedSize 会被压成「…」（run59 就这样）
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                 }
                 if showsBackButton {
