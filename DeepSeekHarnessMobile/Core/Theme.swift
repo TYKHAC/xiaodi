@@ -115,48 +115,52 @@ enum ZhuTheme {
     static let radiusTile: CGFloat = 10
 }
 
-/// Hestia 首页背景 —— 黑白冷酷（用户 2026-10-10 敲定主题「黑白冷酷圆润」）。
-/// 浅色：白底 + 极淡冷灰柔光；深色：纯黑 + 极淡白光晕。
-/// 全部纯代码渐变，不依赖素材，也不用 Metal。
+/// 漫画网点背景 —— 规则圆点（网点纸那种），极淡，只提供纸感、不抢内容。
+/// 用户 2026-10-11 第 4 项：「1px 细线画格 + 极淡网点背景」。
+/// 用 patternImage 平铺（GPU 便宜），不是逐点 Canvas 画（大屏会卡）。
+struct HalftoneBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+    var spacing: CGFloat = 5
+    var lightOpacity: Double = 0.06
+    var darkOpacity: Double = 0.10
+
+    var body: some View {
+        Color(uiColor: Self.pattern(
+            white: colorScheme == .dark,
+            spacing: spacing,
+            alpha: colorScheme == .dark ? darkOpacity : lightOpacity
+        ))
+        .ignoresSafeArea()
+    }
+
+    /// 5×5 小图：中心一个小圆点 → 平铺成网点
+    static func pattern(white: Bool, spacing: CGFloat, alpha: Double) -> UIColor {
+        let size = CGSize(width: spacing, height: spacing)
+        let dotRadius = spacing * 0.16
+        let image = UIGraphicsImageRenderer(size: size).image { ctx in
+            UIColor.clear.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+            (white ? UIColor.white.withAlphaComponent(alpha) : UIColor.black.withAlphaComponent(alpha)).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(
+                x: spacing / 2 - dotRadius,
+                y: spacing / 2 - dotRadius,
+                width: dotRadius * 2,
+                height: dotRadius * 2
+            ))
+        }
+        return UIColor(patternImage: image)
+    }
+}
+
+/// Hestia 首页背景 —— 黑白日漫「最简」：纸白 / 墨黑 + 极淡网点。
 struct DeepOceanBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
-            if colorScheme == .dark {
-                Color(white: 0.02)
-                pearlBlobs.opacity(0.16)
-            } else {
-                Color(uiColor: .systemBackground)
-                // 浅色：柔光压得很淡 —— 太浓会把黑标题和灰副标题一起糊掉
-                // （用户 2026-10-10「这个主题字都看不到了」）。
-                pearlBlobs.opacity(0.22)
-            }
+            colorScheme == .dark ? Color(white: 0.02) : Color(uiColor: .systemBackground)
+            HalftoneBackground()
         }
         .ignoresSafeArea()
-    }
-
-    /// 冷灰柔光（无色相，匹配「主题跟图标差不多风格」= 黑白线稿）
-    private var pearlBlobs: some View {
-        ZStack {
-            RadialGradient(
-                colors: [Color(white: 0.55), .clear],
-                center: UnitPoint(x: 0.86, y: 0.06),
-                startRadius: 0,
-                endRadius: 330
-            )
-            RadialGradient(
-                colors: [Color(white: 0.72), .clear],
-                center: UnitPoint(x: 0.08, y: 0.28),
-                startRadius: 0,
-                endRadius: 300
-            )
-            RadialGradient(
-                colors: [Color(white: 0.62), .clear],
-                center: UnitPoint(x: 0.78, y: 0.94),
-                startRadius: 0,
-                endRadius: 340
-            )
-        }
     }
 }
