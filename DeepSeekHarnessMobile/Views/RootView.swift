@@ -1311,7 +1311,6 @@ private struct ConversationNavigationShell<Content: View>: View {
                             .tracking(store.nameFont.tracking)
                             .foregroundStyle(.primary)
                     }
-                    .sharedBackgroundVisibility(.hidden)
                 }
                 if showsBackButton {
                     ToolbarItem(placement: .topBarLeading) {
