@@ -103,6 +103,10 @@ enum ZhuTheme {
     static let cardFill = Color.primary.opacity(0.05)
     static let cardStroke = Color.primary.opacity(0.08)
 
+    /// 全 App 唯一的一记「烈焰赤红」（用户 2026-10-11 定的黑白日漫规范：
+    /// 色彩只出现一次，用在最关键处 —— 目前是「准备就绪」那个点 + 手势高亮）。
+    static let dangerRed = Color(red: 0.847, green: 0.137, blue: 0.165)
+
     /// 统一圆角（黑白冷酷圆润：更圆）
     static let radiusBubble: CGFloat = 15
     static let radiusCard: CGFloat = 18

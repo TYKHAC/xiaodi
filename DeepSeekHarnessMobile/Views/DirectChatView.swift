@@ -236,37 +236,46 @@ struct DirectChatView: View {
         .background(.thinMaterial)
     }
 
-    /// 按住说话时上方的两块深色胶囊（照用户给的参考图：左「取消」/ 右更宽的「滑到这里 转文字」）
+    /// 按住说话 = 照微信那套（用户 2026-10-11 第 3 项）：
+    /// 左上角「↖ 取消」、右上角「转文字 ↗」，中间一排音量波形，球下方「松开 发送」。
+    /// 左上滑 → 取消变红；右上滑 → 转文字高亮；不滑松手 → 直接发送。
     private var voiceGestures: some View {
-        HStack(spacing: 14) {
-            Text("取消")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .padding(.vertical, 15)
-                .padding(.horizontal, 22)
-                .frame(minWidth: 88)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(voiceSlide == .cancel
-                              ? Color(red: 0.84, green: 0.30, blue: 0.29)
-                              : Color(red: 0.12, green: 0.13, blue: 0.16).opacity(0.80))
-                )
+        VStack(spacing: 10) {
+            HStack {
+                Text(voiceSlide == .cancel ? "↖ 松开 取消" : "↖ 取消")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(voiceSlide == .cancel ? ZhuTheme.dangerRed : Color.primary)
+                Spacer(minLength: 0)
+                Text(voiceSlide == .toText ? "转文字 ↗ ✓" : "转文字 ↗")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(voiceSlide == .toText ? ZhuTheme.dangerRed : Color.primary)
+            }
+            .padding(.horizontal, 4)
 
-            Text("滑到这里 转文字")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .padding(.vertical, 15)
-                .padding(.horizontal, 30)
-                .frame(minWidth: 88)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(voiceSlide == .toText
-                              ? DSHColor.ocean
-                              : Color(red: 0.12, green: 0.13, blue: 0.16).opacity(0.80))
-                )
+            // 音量波形（七根，呼吸起伏）
+            HStack(alignment: .center, spacing: 3) {
+                ForEach(0..<7, id: \.self) { index in
+                    Capsule()
+                        .fill(Color.primary.opacity(0.75))
+                        .frame(width: 4, height: waveHeight(index))
+                }
+            }
+            .frame(height: 26)
+
+            Text(voiceSlide == .cancel
+                 ? "松开手指，取消发送"
+                 : (voiceSlide == .toText ? "松开转成文字，填进输入框" : "松开 发送"))
+                .font(.system(size: 12))
+                .foregroundStyle(voiceSlide == .none ? Color.secondary : ZhuTheme.dangerRed)
         }
         .frame(maxWidth: .infinity)
         .animation(.easeOut(duration: 0.15), value: voiceSlide)
+    }
+
+    /// 波形高度（固定一组，配合 TimelineView 的呼吸感；简单稳妥，不引音频电平）
+    private func waveHeight(_ index: Int) -> CGFloat {
+        let pattern: [CGFloat] = [9, 18, 25, 13, 21, 11, 16]
+        return pattern[index % pattern.count]
     }
 
     private var sendDisabled: Bool {
