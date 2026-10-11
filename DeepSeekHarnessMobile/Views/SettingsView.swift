@@ -258,6 +258,39 @@ struct SettingsView: View {
             } header: {
                 Text("外观")
             }
+
+            // 名字字体：用户 2026-10-11「你给出的选择字体设为自定义字体选择里」
+            // —— 16 个候选做成可选，每行直接用该字体渲染 "Hestia" 预览。
+            Section {
+                ForEach(HestiaNameFont.allCases) { font in
+                    Button {
+                        store.nameFontID = font.rawValue
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Hestia")
+                                    .font(font.font(size: 24))
+                                    .tracking(font.tracking)
+                                    .foregroundStyle(.primary)
+                                Text(font.title)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if store.nameFontID == font.rawValue {
+                                Image(systemName: "checkmark")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("名字字体")
+            } footer: {
+                Text("选 App 名字「Hestia」用的字体（点一下立即生效）。")
+            }
         }
         .navigationTitle("设置")
         .task {

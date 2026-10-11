@@ -338,6 +338,19 @@ final class AppStore: ObservableObject {
     /// 「转文字」手势的落点：语音识别结果先放这里，页面取走后清空（不直接发送）
     @Published var voiceDraftToComposer: String?
 
+    /// App 名字（Hestia）用的字体 —— 用户 2026-10-11：把设计稿那 16 个候选做成可选。
+    /// 直接持久化到 UserDefaults（不占用偏好协议，改动最小）。
+    @Published var nameFontID: String =
+        UserDefaults.standard.string(forKey: "hestia.nameFont") ?? HestiaNameFont.baskervilleItalic.rawValue
+    {
+        didSet { UserDefaults.standard.set(nameFontID, forKey: "hestia.nameFont") }
+    }
+
+    /// 当前名字字体（取不到就退回默认的 ⑫ 衬线斜体）
+    var nameFont: HestiaNameFont {
+        HestiaNameFont(rawValue: nameFontID) ?? .baskervilleItalic
+    }
+
     // ── Hestia：独立 agent 的本地会话（用户 2026-10-09 决策）──
     // 与电脑会话完全隔离：未连接时抽屉只显示这里，连接时显示电脑的；
     // 离线也保留（本来就是独立 agent 自己开的会话）。

@@ -21,6 +21,65 @@ enum DSHColor {
     static let success = Color(red: 0.18, green: 0.72, blue: 0.36)
 }
 
+/// App 名字（Hestia）可选字体 —— 用户 2026-10-11：
+/// 「你给出的选择字体设为自定义字体选择里」= 把设计稿里那 16 个候选做成设置项，用户自己挑。
+/// iOS 上就用系统自带字体（不打包字体文件）；名字对不上会退回系统字体，绝不崩。
+enum HestiaNameFont: String, CaseIterable, Identifiable {
+    case didot, georgia, sfHeavy, futura, mincho, kaku, mono, impact          // ①～⑧
+    case rounded, thinSpaced, baskerville, baskervilleItalic, snell, courier, kaiti, compressed  // ⑨～⑯
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .didot: return "① Didone 罗马体"
+        case .georgia: return "② 古典衬线"
+        case .sfHeavy: return "③ 无衬线特粗"
+        case .futura: return "④ 几何无衬线·宽字距"
+        case .mincho: return "⑤ 日式明朝体"
+        case .kaku: return "⑥ 日式粗黑·宽字距"
+        case .mono: return "⑦ 等宽"
+        case .impact: return "⑧ 超粗压缩体"
+        case .rounded: return "⑨ 圆体"
+        case .thinSpaced: return "⑩ 超细无衬线·大字距"
+        case .baskerville: return "⑪ 经典衬线粗体"
+        case .baskervilleItalic: return "⑫ 衬线斜体（当前）"
+        case .snell: return "⑬ 手写体"
+        case .courier: return "⑭ 等宽衬线"
+        case .kaiti: return "⑮ 楷体"
+        case .compressed: return "⑯ 压缩粗体"
+        }
+    }
+
+    func font(size: CGFloat) -> Font {
+        switch self {
+        case .didot: return .custom("Didot-Bold", size: size)
+        case .georgia: return .custom("Georgia-Bold", size: size)
+        case .sfHeavy: return .system(size: size, weight: .heavy)
+        case .futura: return .custom("Futura-Medium", size: size)
+        case .mincho: return .custom("HiraMinProN-W6", size: size)
+        case .kaku: return .custom("HiraKakuProN-W6", size: size)
+        case .mono: return .system(size: size, design: .monospaced).weight(.semibold)
+        case .impact, .compressed: return .custom("Impact", size: size)
+        case .rounded: return .system(size: size, weight: .heavy, design: .rounded)
+        case .thinSpaced: return .system(size: size, weight: .thin)
+        case .baskerville: return .custom("Baskerville-Bold", size: size)
+        case .baskervilleItalic: return .custom("Baskerville-Italic", size: size)
+        case .snell: return .custom("SnellRoundhand-Bold", size: size)
+        case .courier: return .custom("CourierNewPS-BoldMT", size: size)
+        case .kaiti: return .custom("Kaiti SC", size: size)
+        }
+    }
+
+    var tracking: CGFloat {
+        switch self {
+        case .futura, .thinSpaced: return 4
+        case .kaku: return 3
+        default: return 0
+        }
+    }
+}
+
 /// Hestia统一主题「黑白冷酷圆润」v2 —— 用户 2026-10-10 敲定：
 /// 「主题要求黑白冷酷圆润」+「主题跟图标差不多风格」（图标=黑白线稿）。
 /// **所有界面从这里取值，别再各写各的。**

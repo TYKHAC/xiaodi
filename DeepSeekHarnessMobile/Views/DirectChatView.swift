@@ -65,9 +65,10 @@ struct DirectChatView: View {
                         .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.10), radius: 12, y: 4)
-            // 名字字体：用户 2026-10-11 从 16 个候选里选了 ⑫ 衬线斜体（Baskerville Italic）
+            // 名字字体：用户 2026-10-11 做成「自定义字体选择」——设置里挑，这里跟着变
             Text("Hestia")
-                .font(.custom("Baskerville-Italic", size: 27))
+                .font(store.nameFont.font(size: 27))
+                .tracking(store.nameFont.tracking)
                 .foregroundStyle(.primary)
             Text("准备就绪")
                 .font(.subheadline)
