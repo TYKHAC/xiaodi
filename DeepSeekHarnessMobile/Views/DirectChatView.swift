@@ -65,8 +65,9 @@ struct DirectChatView: View {
                         .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.10), radius: 12, y: 4)
+            // 名字字体：用户 2026-10-11 从 16 个候选里选了 ⑫ 衬线斜体（Baskerville Italic）
             Text("Hestia")
-                .font(.system(size: 22, weight: .semibold))
+                .font(.custom("Baskerville-Italic", size: 27))
                 .foregroundStyle(.primary)
             Text("准备就绪")
                 .font(.subheadline)
@@ -102,31 +103,45 @@ struct DirectChatView: View {
     }
 
     private func bubble(_ role: String, _ text: String) -> some View {
-        HStack {
-            if role == "user" { Spacer(minLength: 48) }
-            Text(text)
-                .textSelection(.enabled)
-                .padding(.horizontal, 13)
-                .padding(.vertical, 10)
-                // Hestia主题 v1：用户气泡与远端对话页完全一致
-                // （淡染+描边+自适应，ZhuTheme 统一取值，不再各页各画）
-                .background(
-                    role == "user"
-                        ? AnyShapeStyle(ZhuTheme.accentFill(dark: colorScheme == .dark))
-                        : AnyShapeStyle(Color(uiColor: .secondarySystemBackground)),
-                    in: RoundedRectangle(cornerRadius: ZhuTheme.radiusBubble, style: .continuous)
-                )
-                .overlay {
-                    if role == "user" {
-                        RoundedRectangle(cornerRadius: ZhuTheme.radiusBubble, style: .continuous)
-                            .strokeBorder(
-                                ZhuTheme.accentStroke(dark: colorScheme == .dark),
-                                lineWidth: 0.7
-                            )
+        // 用户 2026-10-11 定案：**对话不要框框** —— 纯文字，靠左右对齐区分；
+        // Hestia 这边带「图标 + 名字」（头像 + Hestia 小标）。
+        Group {
+            if role == "user" {
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("你")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Text(text)
+                        .textSelection(.enabled)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.trailing)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            } else {
+                HStack(alignment: .top, spacing: 9) {
+                    Image("HestiaMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 26, height: 26)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
+                        )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Hestia")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        Text(text)
+                            .textSelection(.enabled)
+                            .font(.system(size: 15))
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
                     }
                 }
-                .foregroundStyle(.primary)
-            if role == "user" { EmptyView() } else { Spacer(minLength: 48) }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
