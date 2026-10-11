@@ -82,7 +82,8 @@ struct WorkspaceView: View {
                     Spacer(minLength: 44)
                     VStack(alignment: .leading, spacing: 7) {
                         Text("Hestia")
-                            .font(.system(size: 32, weight: .bold))
+                            .font(store.nameFont.font(size: 34))
+                            .tracking(store.nameFont.tracking)
                         Text("你的专属代理")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
@@ -116,8 +117,10 @@ struct WorkspaceView: View {
             Color.clear.frame(width: 34, height: 34)
             Spacer(minLength: 0)
             VStack(spacing: 1) {
+                // 名字字体统一（用户 2026-10-11 图一）：顶栏名字跟设置里选的字体走
                 Text("Hestia")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(store.nameFont.font(size: 19))
+                    .tracking(store.nameFont.tracking)
                 HStack(spacing: 4) {
                     Circle()
                         .fill(store.gateway.state.isConnected ? Color.green : Color.secondary)

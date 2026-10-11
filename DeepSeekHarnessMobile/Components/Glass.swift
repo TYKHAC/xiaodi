@@ -78,7 +78,7 @@ struct HarnessMark: View {
             // Hestia：去 DeepSeek 化 —— 品牌锁定改为「水波纹 + Hestia」
             Image(systemName: "water.waves")
                 .font(.system(size: 24, weight: .semibold))
-            Text("Hestia").font(.system(size: 22, weight: .bold, design: .rounded))
+            Text("Hestia").font(HestiaNameFont.current.font(size: 24))
         }
     }
 }

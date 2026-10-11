@@ -162,8 +162,10 @@ struct DirectChatView: View {
                                 .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
                         )
                     VStack(alignment: .leading, spacing: 3) {
+                        // 名字字体统一（用户 2026-10-11 图一）：气泡上的名字也一样
                         Text("Hestia")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(store.nameFont.font(size: 13))
+                            .tracking(store.nameFont.tracking)
                             .foregroundStyle(.secondary)
                         Text(text)
                             .textSelection(.enabled)
@@ -299,29 +301,35 @@ struct DirectChatView: View {
             }
             .padding(.horizontal, 12)
             .padding(.top, 8)
-            .padding(.bottom, 6)
+            // 用户 2026-10-11 图二：「圆球再往上一点点」——底部留白加大，整条栏抬起来
+            .padding(.bottom, 14)
         }
         .animation(.easeOut(duration: 0.18), value: store.voice.state)
-        .background(.thinMaterial)
+        // 用户 2026-10-11 图二：「不要灰色背景…然后虚化」——把原来那块灰板换成毛玻璃，
+        // 纸白 + 网点能透上来，不再是另贴的一块板
+        .background(.ultraThinMaterial)
     }
 
-    /// 按住说话 = 照微信那套（用户 2026-10-11 第 3 项）：
-    /// 左上角「↖ 取消」、右上角「转文字 ↗」，中间一排音量波形，球下方「松开 发送」。
-    /// 左上滑 → 取消变红；右上滑 → 转文字高亮；不滑松手 → 直接发送。
+    /// 按住说话 = 照微信那套（用户 2026-10-11）：
+    /// 左上「取消」、右上「转文字」，中间音量波形，球下方「松开 发送」。
+    /// 左上滑 → 取消变红；右上滑 → 转文字变红；没滑动的那一侧**虚化**（用户 2026-10-11 图二）。
     private var voiceGestures: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             HStack {
-                Text(voiceSlide == .cancel ? "↖ 松开 取消" : "↖ 取消")
-                    .font(.system(size: 14, weight: .semibold))
+                // 用户图二：不要箭头、字体再大一点；非激活侧虚化
+                Text(voiceSlide == .cancel ? "松开 取消" : "取消")
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(voiceSlide == .cancel ? ZhuTheme.dangerRed : Color.primary)
+                    .opacity(hintOpacity(for: .cancel))
                 Spacer(minLength: 0)
-                Text(voiceSlide == .toText ? "转文字 ↗ ✓" : "转文字 ↗")
-                    .font(.system(size: 14, weight: .semibold))
+                Text(voiceSlide == .toText ? "转文字 ✓" : "转文字")
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(voiceSlide == .toText ? ZhuTheme.dangerRed : Color.primary)
+                    .opacity(hintOpacity(for: .toText))
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 18)
 
-            // 音量波形（七根，呼吸起伏）
+            // 音量波形（七根）
             HStack(alignment: .center, spacing: 3) {
                 ForEach(0..<7, id: \.self) { index in
                     Capsule()
@@ -334,11 +342,18 @@ struct DirectChatView: View {
             Text(voiceSlide == .cancel
                  ? "松开手指，取消发送"
                  : (voiceSlide == .toText ? "松开转成文字，填进输入框" : "松开 发送"))
-                .font(.system(size: 12))
+                .font(.system(size: 14))
                 .foregroundStyle(voiceSlide == .none ? Color.secondary : ZhuTheme.dangerRed)
         }
         .frame(maxWidth: .infinity)
         .animation(.easeOut(duration: 0.15), value: voiceSlide)
+    }
+
+    /// 两侧提示的透明度：正在滑的那一侧清晰，另一侧虚化；
+    /// 完全没滑时两侧都稍微压一点（用户 2026-10-11 图二「然后虚化」）。
+    private func hintOpacity(for side: VoiceSlideMode) -> Double {
+        if voiceSlide == .none { return 0.55 }
+        return voiceSlide == side ? 1.0 : 0.30
     }
 
     /// 波形高度（固定一组，配合 TimelineView 的呼吸感；简单稳妥，不引音频电平）

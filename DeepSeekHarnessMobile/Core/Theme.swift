@@ -164,3 +164,13 @@ struct DeepOceanBackground: View {
         .ignoresSafeArea()
     }
 }
+
+extension HestiaNameFont {
+    /// 当前选中的名字字体（读 UserDefaults，和 AppStore 用同一个键）。
+    /// 用途：没有 store 的地方（如导航栏 HarnessMark）也能和应用内的名字保持同一字体。
+    /// 用户 2026-10-11 图一：「名称字体统一」。
+    static var current: HestiaNameFont {
+        let raw = UserDefaults.standard.string(forKey: "hestia.nameFont") ?? ""
+        return HestiaNameFont(rawValue: raw) ?? .baskervilleItalic
+    }
+}

@@ -12,10 +12,35 @@ struct SettingsView: View {
     @State private var modelConfigExpanded = false
     /// 「连接设置」二级页是否推出（平时由那一行的 NavigationLink 推）
     @State private var showRemoteDetail = false
+    /// 「名字字体」二级页（问题 C：16 行太长，收成一行点进来）
+    @State private var showNameFontPicker = false
+    // 用户 2026-10-11 图三：「这个聊天模型也要可以收起来」
+    // —— 模型展开后，聊天/生图/视频三段各自还能再收起，默认收起（干净）
+    @State private var chatModelExpanded = false
+    @State private var imageModelExpanded = false
+    @State private var videoModelExpanded = false
+
+    /// 可收起的段头（照「模型」行那套：标题 + chevron，点一下开合）
+    private func collapseHeader(
+        _ title: String,
+        isExpanded: Bool,
+        toggle: @escaping () -> Void
+    ) -> some View {
+        Button(action: toggle) {
+            HStack(spacing: 6) {
+                Text(title)
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+    }
 
     /// CI 视觉自查模式（正常启动为空）
     private var shotMode: String? { ProcessInfo.processInfo.environment["ZXJ_SHOT"] }
-    private var fontShotOnly: Bool { shotMode == "settings-font" }
 
     private var selectedPresetName: String {
         guard let id = store.agentPresetDefault else { return String(localized: "未读取") }
@@ -89,6 +114,7 @@ struct SettingsView: View {
 
             if modelConfigExpanded {
             Section {
+                if chatModelExpanded {
                 TextField("接口地址（如 https://your-relay.com/v1）", text: $store.directConfig.baseURL)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
@@ -125,13 +151,17 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(store.directTestState == .testing)
+                }
             } header: {
-                Text("聊天模型")
+                collapseHeader("聊天模型", isExpanded: chatModelExpanded) {
+                    withAnimation(.easeInOut(duration: 0.2)) { chatModelExpanded.toggle() }
+                }
             } footer: {
                 Text("填好接口地址、模型名和 API Key，这个壳就是一个完整的 agent（不再需要任何「模式」开关）。Key 只存本机 Keychain。")
             }
 
             Section {
+                if imageModelExpanded {
                 Toggle("启用生图模型", isOn: $store.imageGenConfig.enabled)
                 TextField("接口地址（…/v1）", text: $store.imageGenConfig.baseURL)
                     .textInputAutocapitalization(.never)
@@ -171,13 +201,17 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(store.imageGenTestState == .testing)
+                }
             } header: {
-                Text("生图模型（OpenAI 兼容）")
+                collapseHeader("生图模型（OpenAI 兼容）", isExpanded: imageModelExpanded) {
+                    withAnimation(.easeInOut(duration: 0.2)) { imageModelExpanded.toggle() }
+                }
             } footer: {
                 Text("按 images/generations 格式请求；测试会真实生成一张图。Key 只存本机 Keychain。")
             }
 
             Section {
+                if videoModelExpanded {
                 Toggle("启用视频模型", isOn: $store.videoGenConfig.enabled)
                 TextField("接口地址（…/v1）", text: $store.videoGenConfig.baseURL)
                     .textInputAutocapitalization(.never)
@@ -201,8 +235,11 @@ struct SettingsView: View {
                         store.lastError = error.localizedDescription
                     }
                 }
+                }
             } header: {
-                Text("视频模型")
+                collapseHeader("视频模型", isExpanded: videoModelExpanded) {
+                    withAnimation(.easeInOut(duration: 0.2)) { videoModelExpanded.toggle() }
+                }
             } footer: {
                 Text("视频接口各家差异大，先把配置存下；生成按钮随后接线。Key 只存本机 Keychain。")
             }
@@ -267,34 +304,21 @@ struct SettingsView: View {
             }
 
             // 名字字体：用户 2026-10-11「你给出的选择字体设为自定义字体选择里」
-            // —— 16 个候选做成可选，每行直接用该字体渲染 "Hestia" 预览。
+            // —— 16 个候选太占地方，收成一行 + 二级页去选（用户采纳的问题 C）。
             Section {
-                ForEach(HestiaNameFont.allCases) { font in
-                    Button {
-                        store.nameFontID = font.rawValue
-                    } label: {
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Hestia")
-                                    .font(font.font(size: 24))
-                                    .tracking(font.tracking)
-                                    .foregroundStyle(.primary)
-                                Text(font.title)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if store.nameFontID == font.rawValue {
-                                Image(systemName: "checkmark")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                            }
-                        }
+                NavigationLink {
+                    NameFontPickerView()
+                        .environmentObject(store)
+                } label: {
+                    HStack(spacing: 12) {
+                        SettingsTile(systemImage: "textformat")
+                        Text("名字字体")
+                        Spacer()
+                        Text(store.nameFont.title)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
                 }
-            } header: {
-                Text("名字字体")
             } footer: {
                 Text("选 App 名字「Hestia」用的字体（点一下立即生效）。")
             }
@@ -306,12 +330,15 @@ struct SettingsView: View {
             if let shot = shotMode {
                 if shot == "settings-model" { modelConfigExpanded = true }
                 if shot == "settings-remote" { showRemoteDetail = true }
+                if shot == "settings-font" { showNameFontPicker = true }
             }
         }
-        // settings-font：字体段在最下面，直接把滚动锚点压到底部截它
-        .defaultScrollAnchor(fontShotOnly ? .bottom : .top)
         .navigationDestination(isPresented: $showRemoteDetail) {
             RemoteControlDetailView()
+                .environmentObject(store)
+        }
+        .navigationDestination(isPresented: $showNameFontPicker) {
+            NameFontPickerView()
                 .environmentObject(store)
         }
         .onChange(of: store.gateway.state) { _, state in
@@ -720,6 +747,43 @@ private struct DefaultModelCard: View {
                 .stroke(isSelected ? Color.primary : Color.secondary.opacity(0.18), lineWidth: isSelected ? 1.5 : 1)
         }
         .opacity(isBusy ? 0.7 : 1)
+    }
+}
+
+// MARK: - 名字字体二级页（用户 2026-10-11 采纳问题 C：16 行太长，收成一行 + 进来选）
+
+struct NameFontPickerView: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        List {
+            ForEach(HestiaNameFont.allCases) { font in
+                Button {
+                    store.nameFontID = font.rawValue
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Hestia")
+                                .font(font.font(size: 26))
+                                .tracking(font.tracking)
+                                .foregroundStyle(.primary)
+                            Text(font.title)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if store.nameFontID == font.rawValue {
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .navigationTitle("名字字体")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
