@@ -1276,9 +1276,18 @@ private struct ConversationNavigationShell<Content: View>: View {
     @State private var livePresetTitle: String?
     @Environment(\.dismiss) private var dismiss
 
+    /// 根首页（还没连电脑、没有会话）——顶栏显示的是 App 名字，不是会话标题。
+    /// 用户 2026-10-11 图一：「名称字体统一」→ 这种情况下把系统标题清空，
+    /// 改用自定义 leading 项渲染（这样能套设置里选的名字字体）。
+    private var isBrandRoot: Bool { header.sessionID == nil && !showsBackButton }
+
+    private var navigationTitleText: String {
+        isBrandRoot ? "" : (liveTitle ?? header.title)
+    }
+
     var body: some View {
         content()
-            .navigationTitle(liveTitle ?? header.title)
+            .navigationTitle(navigationTitleText)
             .onReceive(store.$sessions) { sessions in
                 let sessionID = header.sessionID ?? store.selectedSessionId
                 liveTitle = sessions.first { $0.id == sessionID }?.title
@@ -1294,6 +1303,16 @@ private struct ConversationNavigationShell<Content: View>: View {
             .navigationBarBackButtonHidden(true)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
+                // 品牌根：左上角用名字字体写「Hestia」（不能再靠系统 navigationTitle 的字体）
+                if isBrandRoot {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Text("Hestia")
+                            .font(store.nameFont.font(size: 22))
+                            .tracking(store.nameFont.tracking)
+                            .foregroundStyle(.primary)
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                }
                 if showsBackButton {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {

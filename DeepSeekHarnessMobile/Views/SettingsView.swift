@@ -157,7 +157,9 @@ struct SettingsView: View {
                     withAnimation(.easeInOut(duration: 0.2)) { chatModelExpanded.toggle() }
                 }
             } footer: {
+                if chatModelExpanded {
                 Text("填好接口地址、模型名和 API Key，这个壳就是一个完整的 agent（不再需要任何「模式」开关）。Key 只存本机 Keychain。")
+                }
             }
 
             Section {
@@ -207,7 +209,9 @@ struct SettingsView: View {
                     withAnimation(.easeInOut(duration: 0.2)) { imageModelExpanded.toggle() }
                 }
             } footer: {
+                if imageModelExpanded {
                 Text("按 images/generations 格式请求；测试会真实生成一张图。Key 只存本机 Keychain。")
+                }
             }
 
             Section {
@@ -241,7 +245,9 @@ struct SettingsView: View {
                     withAnimation(.easeInOut(duration: 0.2)) { videoModelExpanded.toggle() }
                 }
             } footer: {
+                if videoModelExpanded {
                 Text("视频接口各家差异大，先把配置存下；生成按钮随后接线。Key 只存本机 Keychain。")
+                }
             }
             }
 
