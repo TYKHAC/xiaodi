@@ -172,6 +172,11 @@ jobs:
           if [ -z "$UDID" ]; then echo "::notice::no iPhone simulator available"; exit 0; fi
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
+          # 强制中文区（用户 2026-10-11 第 8 项）：否则模拟器是英文区，
+          # 自查截图里会出现 "Settings / Connect / Not connected" 这类英文，
+          # 跟用户手机上的中文界面对不上 —— 让截图 = 用户所见。
+          xcrun simctl spawn "$UDID" defaults write "Apple Global Domain" AppleLanguages -array zh-Hans || true
+          xcrun simctl spawn "$UDID" defaults write "Apple Global Domain" AppleLocale -string zh_CN || true
           APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
           if [ -z "$APP" ]; then echo "::notice::simulator .app not found"; exit 0; fi
           xcrun simctl install "$UDID" "$APP"

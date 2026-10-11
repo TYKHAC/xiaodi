@@ -65,23 +65,6 @@ struct SettingsView: View {
             // 多余的设置，整段移除（相关 store 接口保留，将来要接再放回）。
 
             Section {
-                Picker("消息字号", selection: $store.messageFontScale) {
-                    Text("较小").tag(0.85)
-                    Text("标准").tag(1.0)
-                    Text("较大").tag(1.18)
-                    Text("最大").tag(1.4)
-                }
-                .pickerStyle(.segmented)
-                Text("这是消息正文的字号预览。")
-                    .font(.system(size: 15 * store.messageFontScale))
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text("文字大小")
-            } footer: {
-                Text("只影响对话里消息正文的字号；系统「更大文字」设置也依然有效。")
-            }
-
-            Section {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { modelConfigExpanded.toggle() }
                 } label: {
@@ -216,6 +199,25 @@ struct SettingsView: View {
             } footer: {
                 Text("视频接口各家差异大，先把配置存下；生成按钮随后接线。Key 只存本机 Keychain。")
             }
+            }
+
+            // 用户 2026-10-11 第 7 项：**模型置顶**（模型是 agent 的核心）；
+            // 字号属于外观类，挪到模型下面。
+            Section {
+                Picker("消息字号", selection: $store.messageFontScale) {
+                    Text("较小").tag(0.85)
+                    Text("标准").tag(1.0)
+                    Text("较大").tag(1.18)
+                    Text("最大").tag(1.4)
+                }
+                .pickerStyle(.segmented)
+                Text("这是消息正文的字号预览。")
+                    .font(.system(size: 15 * store.messageFontScale))
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("文字大小")
+            } footer: {
+                Text("只影响对话里消息正文的字号；系统「更大文字」设置也依然有效。")
             }
 
             Section {
