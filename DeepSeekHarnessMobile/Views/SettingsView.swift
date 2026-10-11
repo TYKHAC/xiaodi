@@ -68,9 +68,10 @@ struct SettingsView: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { modelConfigExpanded.toggle() }
                 } label: {
-                    HStack {
-                        Label(modelConfigExpanded ? "收起模型配置" : "模型（聊天 · 生图 · 视频）",
-                              systemImage: "cpu")
+                    HStack(spacing: 12) {
+                        SettingsTile(systemImage: "cpu")
+                        Text(modelConfigExpanded ? "收起模型配置" : "模型（聊天 · 生图 · 视频）")
+                            .foregroundStyle(.primary)
                         Spacer()
                         Image(systemName: modelConfigExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption.weight(.semibold))
@@ -222,28 +223,26 @@ struct SettingsView: View {
 
             Section {
                 Toggle(isOn: $store.remoteAutoConnectEnabled) {
-                    Label("启动时自动连接电脑", systemImage: "power")
-                }
-                TextField("ws://host:3081/ws/mobile", text: $store.endpoint)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                HStack {
-                    ConnectionDot(state: store.gateway.state)
-                    Text(store.gateway.state.label)
-                    Spacer()
-                    if let port = store.gateway.serverPort {
-                        Text("Port \(port)").foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        SettingsTile(systemImage: "power")
+                        Text("启动时自动连接电脑")
                     }
                 }
-                Button(store.gateway.state.isConnected ? String(localized: "断开连接") : String(localized: "连接")) {
-                    if store.gateway.state.isConnected {
-                        store.gateway.disconnect()
-                    } else {
-                        store.connect()
+                // 用户 2026-10-11：原来那堆碎行（地址/状态/连接/Ping）收进二级页，
+                // 主设置页只留「一行 + 开关」——照豆包那种行结构。
+                NavigationLink {
+                    RemoteControlDetailView()
+                        .environmentObject(store)
+                } label: {
+                    HStack(spacing: 12) {
+                        SettingsTile(systemImage: "link")
+                        Text("连接设置")
+                        Spacer()
+                        Text(store.gateway.state.isConnected ? "已连接" : "未连接")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                Button("Ping 网关") { store.gateway.ping() }
             } header: {
                 Text("远程操控电脑（可选）")
             } footer: {
@@ -704,5 +703,64 @@ private struct DefaultModelCard: View {
                 .stroke(isSelected ? Color.primary : Color.secondary.opacity(0.18), lineWidth: isSelected ? 1.5 : 1)
         }
         .opacity(isBusy ? 0.7 : 1)
+    }
+}
+
+// MARK: - 豆包式设置行的图标块 + 远程连接二级页（用户 2026-10-11）
+
+/// 圆角方形图标块：黑底白符号（深色模式自动反相），34×34、圆角 10。
+/// 照豆包那种行结构 —— 每行最左边一个彩色/黑白图标块。
+struct SettingsTile: View {
+    let systemImage: String
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Color(uiColor: .systemBackground))
+            .frame(width: 34, height: 34)
+            .background(
+                RoundedRectangle(cornerRadius: ZhuTheme.radiusTile, style: .continuous)
+                    .fill(Color.primary)
+            )
+    }
+}
+
+/// 「连接设置」二级页：地址 / 状态 / 连接 / Ping —— 从主设置页收进来的细节。
+struct RemoteControlDetailView: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("ws://host:3081/ws/mobile", text: $store.endpoint)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                HStack {
+                    ConnectionDot(state: store.gateway.state)
+                    Text(store.gateway.state.label)
+                    Spacer()
+                    if let port = store.gateway.serverPort {
+                        Text("Port \(port)").foregroundStyle(.secondary)
+                    }
+                }
+                Button(store.gateway.state.isConnected
+                       ? String(localized: "断开连接")
+                       : String(localized: "连接")) {
+                    if store.gateway.state.isConnected {
+                        store.gateway.disconnect()
+                    } else {
+                        store.connect()
+                    }
+                }
+                Button("Ping 网关") { store.gateway.ping() }
+            } header: {
+                Text("电脑端地址")
+            } footer: {
+                Text("填电脑端网关地址后可以远程用电脑端的会话与文件；和电脑端只是共用一颗大脑，不需要扫码。")
+            }
+        }
+        .navigationTitle("连接设置")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
