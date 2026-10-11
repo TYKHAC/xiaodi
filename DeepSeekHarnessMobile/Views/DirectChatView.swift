@@ -27,6 +27,17 @@ struct DirectChatView: View {
     /// 待发送的图片（先挂缩略图；送模型的链路后续接）
     @State private var pendingImage: UIImage?
 
+    /// CI 视觉自查：SIMCTL_CHILD_ZXJ_SHOT=<模式> 把某个界面状态直接摆出来（正常启动为空）
+    private var shotMode: String? { ProcessInfo.processInfo.environment["ZXJ_SHOT"] }
+
+    /// 按截图模式摆初始状态（键盘模式 / 按住说话的三个变体）
+    private func applyShotMode() {
+        guard let mode = shotMode else { return }
+        if mode == "chat-keyboard" { keyboardMode = true }
+        if mode == "chat-holding-cancel" { voiceSlide = .cancel }
+        if mode == "chat-holding-totext" { voiceSlide = .toText }
+    }
+
     /// 直连上下文里给模型的身份。远程（电脑端）身份由 DSH 自己管，这里只管直连。
     private var systemPrompt: DirectChatMessage {
         DirectChatMessage(
@@ -60,6 +71,7 @@ struct DirectChatView: View {
                 .ignoresSafeArea()
         }
         .onDisappear { streamTask?.cancel() }
+        .onAppear { applyShotMode() }
         // 「向右上滑 = 转文字」：识别结果填进输入框，不直接发送
         .onChange(of: store.voiceDraftToComposer) { _, text in
             guard let text, !text.isEmpty else { return }
@@ -219,8 +231,9 @@ struct DirectChatView: View {
 
     private var inputBar: some View {
         VStack(spacing: 0) {
-            // 手势胶囊：**只按住圆球时才出现**（不按不出现 —— 用户 2026-10-10 明确）
-            if store.voice.state == .listening {
+            // 手势胶囊：**只按住圆球时才出现**（不按不出现 —— 用户 2026-10-10 明确）。
+            // CI 截图模式下可由 ZXJ_SHOT=chat-holding* 强制摆出（模拟器没麦克风按不出来）。
+            if store.voice.state == .listening || shotMode?.hasPrefix("chat-holding") == true {
                 voiceGestures
                     .padding(.horizontal, 12)
                     .padding(.bottom, 10)

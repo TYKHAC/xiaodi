@@ -122,10 +122,13 @@ private struct RootNavigationHost: View, Equatable {
                 store.connectOnColdLaunchIfPaired()
             }
             openPrimaryConversation()
-            // CI 视觉自查钩子：模拟器用 SIMCTL_CHILD_ZXJ_SHOT=settings 启动时
-            // 直接推到设置页，让每轮 CI 能截到目标界面（正常启动无此环境变量）。
-            if ProcessInfo.processInfo.environment["ZXJ_SHOT"] == "settings" {
-                navigationPath = [.settings]
+            // CI 视觉自查钩子：模拟器用 SIMCTL_CHILD_ZXJ_SHOT=<模式> 启动时
+            // 直接推到目标界面，让每轮 CI 能截到各个按钮点下去的样子。
+            // （正常启动没有这个环境变量。）chat-* 模式留在首页对话，不用推路由。
+            if let shot = ProcessInfo.processInfo.environment["ZXJ_SHOT"] {
+                if shot == "settings" || shot.hasPrefix("settings-") {
+                    navigationPath = [.settings]
+                }
             }
         }
         // store 在本结构体里是"不被观察的引用"（见文件头注释），sessions/gateway

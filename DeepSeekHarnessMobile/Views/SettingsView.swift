@@ -10,6 +10,12 @@ struct SettingsView: View {
     @State private var mediaVideoKey: String = MediaAPIKeyStore.load(.video) ?? ""
     // 模型配置默认收起（用户 2026-10-09：「配置模型那里要简洁一点，全摊开的收起来」）
     @State private var modelConfigExpanded = false
+    /// 「连接设置」二级页是否推出（平时由那一行的 NavigationLink 推）
+    @State private var showRemoteDetail = false
+
+    /// CI 视觉自查模式（正常启动为空）
+    private var shotMode: String? { ProcessInfo.processInfo.environment["ZXJ_SHOT"] }
+    private var fontShotOnly: Bool { shotMode == "settings-font" }
 
     private var selectedPresetName: String {
         guard let id = store.agentPresetDefault else { return String(localized: "未读取") }
@@ -296,6 +302,17 @@ struct SettingsView: View {
         .navigationTitle("设置")
         .task {
             store.refreshDefaultConfiguration()
+            // CI 截图模式：把对应状态直接摆出来（正常启动无此环境变量）
+            if let shot = shotMode {
+                if shot == "settings-model" { modelConfigExpanded = true }
+                if shot == "settings-remote" { showRemoteDetail = true }
+            }
+        }
+        // settings-font：字体段在最下面，直接把滚动锚点压到底部截它
+        .defaultScrollAnchor(fontShotOnly ? .bottom : .top)
+        .navigationDestination(isPresented: $showRemoteDetail) {
+            RemoteControlDetailView()
+                .environmentObject(store)
         }
         .onChange(of: store.gateway.state) { _, state in
             if state.isConnected {
