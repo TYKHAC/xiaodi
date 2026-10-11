@@ -19,6 +19,8 @@ struct DirectChatView: View {
     @State private var streamTask: Task<Void, Never>?
     /// 按住圆球时的手势方向（决定上方显示「取消」还是「滑到这里 转文字」）
     @State private var voiceSlide: VoiceSlideMode = .none
+    /// 底部栏模式：false = 语音模式（圆球居中），true = 键盘模式（输入框）
+    @State private var keyboardMode = false
 
     /// 直连上下文里给模型的身份。远程（电脑端）身份由 DSH 自己管，这里只管直连。
     private var systemPrompt: DirectChatMessage {
@@ -181,33 +183,50 @@ struct DirectChatView: View {
 
             HStack(spacing: 9) {
                 // 语音球：按住说话（左上滑取消 / 右上滑转文字）
-                SiriMicButton(
-                    voice: store.voice,
-                    diameter: 38,
-                    reduceMotion: reduceMotion,
-                    onSlideModeChange: { voiceSlide = $0 }
-                )
+                // 底部栏双模式（用户 2026-10-11 定案）：
+                //   语音模式 = 圆球居中贴底（按住说话）；键盘模式 = 输入框 + 发送
+                if keyboardMode {
+                    TextField("说点什么…", text: $draft, axis: .vertical)
+                        .lineLimit(1...5)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 9)
+                        .background(Color(uiColor: .secondarySystemBackground),
+                                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .submitLabel(.send)
+                        .onSubmit { send() }
+                        .disabled(isStreaming)
 
-                TextField("说点什么…", text: $draft, axis: .vertical)
-                    .lineLimit(1...5)
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 9)
-                    .background(Color(uiColor: .secondarySystemBackground),
-                                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .submitLabel(.send)
-                    .onSubmit { send() }
-                    .disabled(isStreaming)
-
-                Button {
-                    if isStreaming { stop() } else { send() }
-                } label: {
-                    Image(systemName: isStreaming ? "stop.fill" : "arrow.up.circle.fill")
-                        .font(.system(size: 30))
-                        .foregroundStyle(sendDisabled ? Color.secondary : ZhuTheme.accent)
+                    Button {
+                        if isStreaming { stop() } else { send() }
+                    } label: {
+                        Image(systemName: isStreaming ? "stop.fill" : "arrow.up.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundStyle(sendDisabled ? Color.secondary : ZhuTheme.accent)
+                    }
+                    .disabled(sendDisabled)
+                    .accessibilityLabel(isStreaming ? "停止" : "发送")
+                } else {
+                    Spacer(minLength: 0)
+                    SiriMicButton(
+                        voice: store.voice,
+                        diameter: 56,
+                        reduceMotion: reduceMotion,
+                        onSlideModeChange: { voiceSlide = $0 }
+                    )
+                    Spacer(minLength: 0)
                 }
-                .disabled(sendDisabled)
-                .accessibilityLabel(isStreaming ? "停止" : "发送")
+
+                // 右：键盘 / 语音 切换（点一下换模式）
+                Button {
+                    withAnimation(.easeOut(duration: 0.18)) { keyboardMode.toggle() }
+                } label: {
+                    Image(systemName: keyboardMode ? "waveform" : "keyboard")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.primary)
+                        .frame(width: 40, height: 40)
+                }
+                .accessibilityLabel(keyboardMode ? "切到语音模式" : "切到键盘模式")
             }
             .padding(.horizontal, 12)
             .padding(.top, 8)
