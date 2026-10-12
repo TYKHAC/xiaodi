@@ -433,6 +433,10 @@ private struct RootNavigationHost: View, Equatable {
         DragGesture(minimumDistance: 6)
             .onChanged { value in
                 if drawerDragStart == nil {
+                    // 用户 2026-10-12：「只有手机划到手机边缘的时候是返回，没碰到边缘就不可以返回，
+                    // 因为我要全选文字在屏幕中间又滑都会返回去」。
+                    // 所以：**只有从屏幕最左边缘 ~24pt 内起手**才认成抽屉手势；中间横滑一律忽略。
+                    guard value.startLocation.x < 24 else { return }
                     guard abs(value.translation.width) > abs(value.translation.height) * 1.2 else { return }
                     drawerDragStart = drawerOffset
                 }
@@ -1333,16 +1337,19 @@ private struct ConversationNavigationShell<Content: View>: View {
             .navigationBarBackButtonHidden(true)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                // 品牌根：左上角用名字字体写「Hestia」（不能再靠系统 navigationTitle 的字体）
+                // 品牌根：左上角用名字字体写「Hestia」，旁边放连接状态小圆点
+                // （用户 2026-10-12：三个点删掉、小圆点挪到名字旁）。
                 if isBrandRoot {
                     ToolbarItem(placement: .topBarLeading) {
-                        Text("Hestia")
-                            .font(store.nameFont.font(size: 22))
-                            .tracking(store.nameFont.tracking)
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                            // 右边有三个 trailing 项，不加 fixedSize 会被压成「…」（run59 就这样）
-                            .fixedSize(horizontal: true, vertical: false)
+                        HStack(spacing: 7) {
+                            Text("Hestia")
+                                .font(store.nameFont.font(size: 22))
+                                .tracking(store.nameFont.tracking)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                            ConnectionDot(state: gateway.state)
+                        }
                     }
                 }
                 if showsBackButton {
@@ -1358,8 +1365,7 @@ private struct ConversationNavigationShell<Content: View>: View {
                         .accessibilityLabel(String(localized: "返回"))
                     }
                 }
-                // Hestia：顶栏静音键（一键开关朗读回复）。它原来长在 WorkspaceView 里，
-                // 首页换成对话页后必须搬到对话外壳，否则用户再也找不到朗读开关。
+                // Hestia：顶栏静音键 —— 删掉「···」后它是唯一 trailing 项，自然最右（用户 2026-10-12）
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         store.speakRepliesEnabled.toggle()
@@ -1373,33 +1379,25 @@ private struct ConversationNavigationShell<Content: View>: View {
                                         : String(localized: "开启朗读回复"))
                 }
 
-                if #available(iOS 26.0, *) {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        ConversationNavigationStatus(
-                            gateway: gateway,
-                            agentPresetTitle: livePresetTitle ?? header.agentPresetTitle
-                        )
-                    }
-                    .sharedBackgroundVisibility(.hidden)
+                // 连接状态（圆点 + 预设名）只在看电脑会话时放 trailing；品牌根上圆点已挪到名字旁
+                if !isBrandRoot {
+                    if #available(iOS 26.0, *) {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            ConversationNavigationStatus(
+                                gateway: gateway,
+                                agentPresetTitle: livePresetTitle ?? header.agentPresetTitle
+                            )
+                        }
+                        .sharedBackgroundVisibility(.hidden)
 
-                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                } else {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        ConversationNavigationStatus(
-                            gateway: gateway,
-                            agentPresetTitle: livePresetTitle ?? header.agentPresetTitle
-                        )
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button(String(localized: "工作区文件"), systemImage: "folder", action: {
-                            showsWorkspaceFiles = true
-                        })
-                        .disabled(header.sessionID == nil)
-                    } label: {
-                        Image(systemName: "ellipsis")
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    } else {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            ConversationNavigationStatus(
+                                gateway: gateway,
+                                agentPresetTitle: livePresetTitle ?? header.agentPresetTitle
+                            )
+                        }
                     }
                 }
             }
