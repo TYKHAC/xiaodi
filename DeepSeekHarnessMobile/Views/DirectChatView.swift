@@ -146,6 +146,10 @@ struct DirectChatView: View {
                     }
                     if !streamingText.isEmpty {
                         bubble("assistant", streamingText)
+                    } else if isStreaming {
+                        // 用户 2026-10-12：模型还没吐出字时，显示「Hestia 正在思考…」，
+                        // 而且要有颜色（赤红 + 呼吸的三点）—— 原来这里是空白的，像卡住了。
+                        thinkingRow
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
@@ -167,9 +171,46 @@ struct DirectChatView: View {
         }
     }
 
+    /// 「Hestia 正在思考…」—— 模型还没吐出字时的占位（用户 2026-10-12 要加，且要有颜色）。
+    /// 赤红文字 + 三个赤红点呼吸，用 TimelineView 驱动，不引额外状态。
+    private var thinkingRow: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image("HestiaMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 26, height: 26)
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
+                )
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Hestia")
+                    .font(store.nameFont.font(size: 13))
+                    .tracking(store.nameFont.tracking)
+                    .foregroundStyle(.secondary)
+                TimelineView(.animation) { context in
+                    let t = context.date.timeIntervalSinceReferenceDate
+                    HStack(spacing: 5) {
+                        Text("正在思考")
+                            .font(.system(size: 15))
+                            .foregroundStyle(ZhuTheme.dangerRed)
+                        ForEach(0..<3, id: \.self) { i in
+                            let phase = (t * 2 + Double(i) * 0.33).truncatingRemainder(dividingBy: 1)
+                            Circle()
+                                .fill(ZhuTheme.dangerRed)
+                                .frame(width: 5, height: 5)
+                                .opacity(0.25 + 0.75 * phase)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     /// 用户自己的头像（照片优先，否则用选中的符号）—— 26pt，和 Hestia 的图标同尺寸同圆角
-    private var userAvatar: some View {
-        Group {
+    private var userAvatar: some View {        Group {
             if let name = store.userAvatarImageName, let image = DirectImageStore.load(named: name) {
                 Image(uiImage: image)
                     .resizable()
