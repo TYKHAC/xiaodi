@@ -167,33 +167,62 @@ struct DirectChatView: View {
         }
     }
 
+    /// 用户自己的头像（照片优先，否则用选中的符号）—— 26pt，和 Hestia 的图标同尺寸同圆角
+    private var userAvatar: some View {
+        Group {
+            if let name = store.userAvatarImageName, let image = DirectImageStore.load(named: name) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: store.userAvatarSymbol)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.primary.opacity(0.06))
+            }
+        }
+        .frame(width: 26, height: 26)
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
+        )
+    }
+
     private func bubble(_ role: String, _ text: String, imageName: String? = nil) -> some View {
         // 用户 2026-10-11 定案：**对话不要框框** —— 纯文字，靠左右对齐区分；
         // Hestia 这边带「图标 + 名字」（头像 + Hestia 小标）。
         Group {
             if role == "user" {
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text("你")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                    if let imageName, let image = DirectImageStore.load(named: imageName) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 220, maxHeight: 280)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
-                            )
+                // 用户 2026-10-12：「对话头像我发信息这边的可以自己选头像」——
+                // 自己这边也带头像（照片优先，否则用选的符号），和 Hestia 那边对称。
+                HStack(alignment: .top, spacing: 9) {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("你")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        if let imageName, let image = DirectImageStore.load(named: imageName) {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: 220, maxHeight: 280)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                                )
+                        }
+                        if !text.isEmpty {
+                            Text(text)
+                                .textSelection(.enabled)
+                                .font(.system(size: 15))
+                                .foregroundStyle(.primary)
+                                .multilineTextAlignment(.trailing)
+                        }
                     }
-                    if !text.isEmpty {
-                        Text(text)
-                            .textSelection(.enabled)
-                            .font(.system(size: 15))
-                            .foregroundStyle(.primary)
-                            .multilineTextAlignment(.trailing)
-                    }
+                    userAvatar
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             } else {

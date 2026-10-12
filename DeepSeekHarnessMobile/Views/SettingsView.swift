@@ -14,6 +14,8 @@ struct SettingsView: View {
     @State private var showRemoteDetail = false
     /// 「名字字体」二级页（问题 C：16 行太长，收成一行点进来）
     @State private var showNameFontPicker = false
+    /// 头像相册选择（用户 2026-10-12）
+    @State private var showAvatarLibrary = false
     // 用户 2026-10-11 图三：「这个聊天模型也要可以收起来」
     // —— 模型展开后，聊天/生图/视频三段各自还能再收起，默认收起（干净）
     @State private var chatModelExpanded = false
@@ -309,6 +311,64 @@ struct SettingsView: View {
                 Text("外观")
             }
 
+            // 我的头像（用户 2026-10-12：「对话头像我发信息这边的可以自己选头像」）
+            Section {
+                Button {
+                    showAvatarLibrary = true
+                } label: {
+                    HStack(spacing: 12) {
+                        SettingsTile(systemImage: "person.crop.circle")
+                        Text("从相册选照片")
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if store.userAvatarImageName != nil {
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                if store.userAvatarImageName != nil {
+                    Button {
+                        store.userAvatarImageName = nil
+                    } label: {
+                        Text("改用符号头像").foregroundStyle(.primary)
+                    }
+                }
+                // 16 个符号头像，横滑选（和主题一致：纯符号、黑白）
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(AppStore.userAvatarSymbols, id: \.self) { symbol in
+                            Button {
+                                store.userAvatarSymbol = symbol
+                                store.userAvatarImageName = nil
+                            } label: {
+                                Image(systemName: symbol)
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                    .frame(width: 40, height: 40)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(Color.primary.opacity(
+                                                store.userAvatarImageName == nil && store.userAvatarSymbol == symbol
+                                                ? 0.16 : 0.06))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            } header: {
+                Text("我的头像")
+            } footer: {
+                Text("显示在你发出的每条消息旁边。照片只存在本机；不选就用上面这些符号。")
+            }
+
             // 名字字体：用户 2026-10-11「你给出的选择字体设为自定义字体选择里」
             // —— 16 个候选太占地方，收成一行 + 二级页去选（用户采纳的问题 C）。
             Section {
@@ -346,6 +406,15 @@ struct SettingsView: View {
         .navigationDestination(isPresented: $showNameFontPicker) {
             NameFontPickerView()
                 .environmentObject(store)
+        }
+        // 选头像照片（复用直连那套相册选择器 + 磁盘存储）
+        .sheet(isPresented: $showAvatarLibrary) {
+            PhotoLibraryPicker { image in
+                if let name = DirectImageStore.save(image) {
+                    store.userAvatarImageName = name
+                }
+            }
+            .ignoresSafeArea()
         }
         .onChange(of: store.gateway.state) { _, state in
             if state.isConnected {

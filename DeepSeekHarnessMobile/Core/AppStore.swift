@@ -351,6 +351,35 @@ final class AppStore: ObservableObject {
         HestiaNameFont(rawValue: nameFontID) ?? .baskervilleItalic
     }
 
+    // ── Hestia：用户自己的头像（用户 2026-10-12：「对话头像我发信息这边的可以自己选头像」）──
+    /// 预设头像（SF Symbol 名，黑白线稿风格，和主题一致）
+    @Published var userAvatarSymbol: String =
+        UserDefaults.standard.string(forKey: "hestia.avatarSymbol") ?? "person.fill"
+    {
+        didSet { UserDefaults.standard.set(userAvatarSymbol, forKey: "hestia.avatarSymbol") }
+    }
+
+    /// 用户自选的照片（存磁盘，复用 DirectImageStore）；有照片就优先显示照片
+    @Published var userAvatarImageName: String? =
+        UserDefaults.standard.string(forKey: "hestia.avatarImage")
+    {
+        didSet {
+            if let userAvatarImageName {
+                UserDefaults.standard.set(userAvatarImageName, forKey: "hestia.avatarImage")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "hestia.avatarImage")
+            }
+        }
+    }
+
+    /// 可选符号头像（16 个，够用不花哨）
+    static let userAvatarSymbols: [String] = [
+        "person.fill", "person.crop.circle.fill", "figure.walk", "face.smiling",
+        "cat.fill", "dog.fill", "hare.fill", "tortoise.fill",
+        "moon.stars.fill", "sparkles", "bolt.fill", "flame.fill",
+        "leaf.fill", "drop.fill", "snowflake", "star.fill"
+    ]
+
     // ── Hestia：独立 agent 的本地会话（用户 2026-10-09 决策）──
     // 与电脑会话完全隔离：未连接时抽屉只显示这里，连接时显示电脑的；
     // 离线也保留（本来就是独立 agent 自己开的会话）。
