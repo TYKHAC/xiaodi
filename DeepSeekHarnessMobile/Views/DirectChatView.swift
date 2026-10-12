@@ -26,6 +26,8 @@ struct DirectChatView: View {
     @State private var showPhotoLibrary = false
     /// 待发送的图片（先挂缩略图；送模型的链路后续接）
     @State private var pendingImage: UIImage?
+    /// 输入框焦点 —— 用户 2026-10-12：点别处要能收键盘（不要再逼用户去点别的）
+    @FocusState private var composerFocused: Bool
 
     /// CI 视觉自查：SIMCTL_CHILD_ZXJ_SHOT=<模式> 把某个界面状态直接摆出来（正常启动为空）
     private var shotMode: String? { ProcessInfo.processInfo.environment["ZXJ_SHOT"] }
@@ -94,6 +96,9 @@ struct DirectChatView: View {
         }
         .onDisappear { streamTask?.cancel() }
         .onAppear { applyShotMode() }
+        // 用户 2026-10-12「主题没实现」：主题背景（纸白/墨黑 + 极淡网点）原来只挂在
+        // WorkspaceView 上，而根页面早就是这一页了 —— 所以真正的页面上根本没有主题。
+        .background(DeepOceanBackground())
         // 「向右上滑 = 转文字」：识别结果填进输入框，不直接发送
         .onChange(of: store.voiceDraftToComposer) { _, text in
             guard let text, !text.isEmpty else { return }
@@ -153,6 +158,12 @@ struct DirectChatView: View {
             .onChange(of: streamingText) { _, _ in
                 proxy.scrollTo("bottom", anchor: .bottom)
             }
+            // 用户 2026-10-12：点/划对话区就能收键盘。
+            // 用 simultaneousGesture 而不是 onTapGesture —— 不然会抢掉气泡的文字选择。
+            .scrollDismissesKeyboard(.interactively)
+            .simultaneousGesture(
+                TapGesture().onEnded { composerFocused = false }
+            )
         }
     }
 
@@ -292,9 +303,12 @@ struct DirectChatView: View {
                 // 底部栏双模式（用户 2026-10-11 定案）：
                 //   语音模式 = 圆球居中贴底（按住说话）；键盘模式 = 输入框 + 发送
                 if keyboardMode {
-                    TextField("说点什么…", text: $draft, axis: .vertical)
-                        .lineLimit(1...5)
+                    // 用户 2026-10-12「键盘的发送发不出去」：**绝不能加 axis: .vertical** ——
+                    // 多行输入框的回车键是「换行」，不会触发 onSubmit，所以键盘上的发送没反应。
+                    // 要长文本就靠输入框自己滚动，发送只走回车/右侧 ↑。
+                    TextField("说点什么…", text: $draft)
                         .textFieldStyle(.plain)
+                        .focused($composerFocused)
                         .padding(.horizontal, 13)
                         .padding(.vertical, 9)
                         .background(Color(uiColor: .secondarySystemBackground),

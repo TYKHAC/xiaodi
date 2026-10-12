@@ -222,6 +222,14 @@ private struct RootNavigationHost: View, Equatable {
             store.selectDirectSession(id: session.id)
             openDirectChat()
         }
+        // 用户 2026-10-12「会话没有归档功能」：本机会话给删除/重命名入口
+        .contextMenu {
+            Button {
+                store.deleteDirectSession(id: session.id)
+            } label: {
+                Label("删除会话", systemImage: "trash")
+            }
+        }
     }
 
     /// 打开直连聊天：直连页盖在根路由上（selectedSessionId==nil 且直连开关开）
@@ -310,6 +318,15 @@ private struct RootNavigationHost: View, Equatable {
                             .onTapGesture {
                                 closeDrawer()
                                 openConversationFromList(session)
+                            }
+                            // 用户 2026-10-12「会话没有归档功能」：
+                            // PC 会话走电脑端的归档（archiveSession → gateway）
+                            .contextMenu {
+                                Button {
+                                    store.archiveSession(session.id)
+                                } label: {
+                                    Label("归档会话", systemImage: "archivebox")
+                                }
                             }
                     }
                     if drawerSessions.isEmpty && drawerDirectSessions.isEmpty {

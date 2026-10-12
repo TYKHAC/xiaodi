@@ -392,6 +392,21 @@ final class AppStore: ObservableObject {
         activeDirectSessionID = session.id
     }
 
+    /// 删掉一个本机会话 —— 用户 2026-10-12「会话没有归档功能」。
+    /// 删空了就补一个空的，保证「至少有一个自己的会话」这个不变量
+    /// （否则 appendDirectMessage 那边虽然已改成自愈，UI 也会短暂空掉）。
+    func deleteDirectSession(id: String) {
+        directSessions.removeAll { $0.id == id }
+        if directSessions.isEmpty {
+            let fresh = DirectChatSession(title: "新对话")
+            directSessions = [fresh]
+            activeDirectSessionID = fresh.id
+        } else if activeDirectSessionID == id {
+            activeDirectSessionID = directSessions[0].id
+        }
+        DirectChatLog.saveSessions(directSessions)
+    }
+
     /// 往当前活跃的本地会话追加一条消息（system 提示不落盘）。
     /// 用户 2026-10-12：**没有会话就现建一个**，绝不静默丢弃 —— 这条守卫原来
     /// 在 directSessions 为空时直接 return，表现就是「发不出去」且没有任何提示。
