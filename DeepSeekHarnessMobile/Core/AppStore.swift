@@ -539,9 +539,18 @@ final class AppStore: ObservableObject {
     }
 
     /// 壳 = 独立 agent（用户 2026-10-10 澄清：「没有所谓的直连模式，只有一个独立的
-    /// agent 壳，连上 api 就是一个完整的 agent」）。没有选中电脑会话时，
-    /// 对话页直接渲染 agent 自己的聊天页，不再需要任何"模式开关"。
-    var isDirectModeActive: Bool { selectedSessionId == nil }
+    /// agent 壳，连上 api 就是一个完整的 agent」）。
+    ///
+    /// 用户 2026-10-12：「我发信息还要连接电脑」「发不出去现在」—— 原来判定方式是
+    /// `selectedSessionId == nil`，而这个值**会残留**：只要连过一次电脑、或在抽屉里
+    /// 点过一次电脑会话，它就一直是那个电脑会话 id。于是打开 App 直接落在电脑会话页，
+    /// 发消息自然走电脑；电脑没连 → 根本发不出去。
+    ///
+    /// 现在改成看「导航栈里有没有电脑会话」：**退回根页面就一定是独立 agent**，
+    /// 电脑会话只有用户主动点进去才进（那个会话页自带返回键，退回来就是 agent）。
+    @Published var remoteConversationOpen: Bool = false
+
+    var isDirectModeActive: Bool { !remoteConversationOpen }
 
     func testDirectConnection() {
         guard let apiKey = DirectAPIKeyStore.load(), !apiKey.isEmpty else {

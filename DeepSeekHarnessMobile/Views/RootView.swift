@@ -142,6 +142,14 @@ private struct RootNavigationHost: View, Equatable {
             if state.isConnected { openPrimaryConversation() }
         }
         .onChange(of: navigationPath) { _, path in
+            // 「远程」= 导航栈里真的有一个**带会话 id** 的对话页（电脑会话）。
+            // 用户 2026-10-12：不能再靠会残留的 selectedSessionId 判定 ——
+            // 退回根页面必须回到独立 agent，否则发消息还得连电脑。
+            let hasRemoteConversation = path.contains { route in
+                if case .conversation(let header) = route { return header.sessionID != nil }
+                return false
+            }
+            store.remoteConversationOpen = hasRemoteConversation
             if path.isEmpty {
                 store.resumeWorkspace()
                 // 用户主动退回列表页 = 已经做过选择，别再自动拽进对话
@@ -219,22 +227,27 @@ private struct RootNavigationHost: View, Equatable {
     /// 打开直连聊天：直连页盖在根路由上（selectedSessionId==nil 且直连开关开）
     private func openDirectChat() {
         primaryChoiceMade = true   // 抑制自动打开远程会话
+        // 用户 2026-10-12：点回「本机会话」必须立刻回到独立 agent，
+        // 不等 navigationPath 回调（路径没变化时那个回调不会触发）
+        store.remoteConversationOpen = false
         navigationPath = []
     }
 
-    /// 新会话：远程=电脑新会话；未连接=独立本地新会话（会话域隔离）
+    /// 新会话 —— 用户 2026-10-12：独立 agent 才是默认面，
+    /// 「新会话」永远开 agent 自己的会话，不再因为「连着电脑」就跑去建电脑会话
+    /// （那正是「我发信息还要连接电脑」的来源之一）。电脑端会话在「会话」区点进去。
     private func newSessionAction() {
-        if store.gateway.state.isConnected {
-            startNewConversation()
-        } else {
-            store.startNewDirectSession()
-            openDirectChat()
-        }
+        store.startNewDirectSession()
+        openDirectChat()
     }
 
     /// 根首页的对话头部：有选中会话就显示它，否则是「Hestia」待命页
     private var rootConversationHeader: ConversationNavigationHeader {
-        if let session = store.sessions.first(where: { $0.id == store.selectedSessionId }) {
+        // 用户 2026-10-12：根页面 = 独立 agent，顶栏就该是品牌名。
+        // 只有在**真的进了电脑会话**（remoteConversationOpen）时才用会话标题，
+        // 否则残留的 selectedSessionId 会让顶栏挂着电脑会话名（而画面是 agent 聊天）。
+        if store.remoteConversationOpen,
+           let session = store.sessions.first(where: { $0.id == store.selectedSessionId }) {
             return conversationHeader(for: session)
         }
         return ConversationNavigationHeader(sessionID: nil, title: "Hestia", agentPresetTitle: "")
@@ -560,6 +573,11 @@ private struct RootNavigationHost: View, Equatable {
             navigationPath = [.conversation(conversationHeader(for: nil))]
             return
         }
+        // 用户 2026-10-12「我发信息还要连接电脑」：**不再自动接管电脑会话**。
+        // 根页面永远是独立 agent（连上 api 就是一个完整的 agent）；电脑会话只有
+        // 用户在左划栏里主动点才进 —— 那条路径会 push 带 sessionID 的路由，
+        // 上面的 navigationPath 观察者据此把 remoteConversationOpen 打开。
+        guard store.remoteConversationOpen else { return }
         let header = conversationHeader(for: session)
         newConversationTask = Task { @MainActor in
             defer { newConversationTask = nil }
