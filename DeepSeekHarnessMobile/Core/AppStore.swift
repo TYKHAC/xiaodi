@@ -354,7 +354,16 @@ final class AppStore: ObservableObject {
     // ── Hestia：独立 agent 的本地会话（用户 2026-10-09 决策）──
     // 与电脑会话完全隔离：未连接时抽屉只显示这里，连接时显示电脑的；
     // 离线也保留（本来就是独立 agent 自己开的会话）。
-    @Published private(set) var directSessions: [DirectChatSession] = DirectChatLog.loadSessions()
+    @Published private(set) var directSessions: [DirectChatSession] = AppStore.seededDirectSessions()
+
+    /// 独立 agent 至少要有**一个自己的会话** —— 用户 2026-10-12「发不出去现在」：
+    /// 原来这里直接 `DirectChatLog.loadSessions()`，全新安装（或存储解码失败）时会拿到
+    /// 空数组，而 appendDirectMessage 里有 `guard !directSessions.isEmpty else { return }`
+    /// —— 于是用户发的消息被**静默丢弃**：界面没反应、发出去的请求里也没有这句话。
+    static func seededDirectSessions() -> [DirectChatSession] {
+        let loaded = DirectChatLog.loadSessions()
+        return loaded.isEmpty ? [DirectChatSession(title: "新对话")] : loaded
+    }
 
     @Published var activeDirectSessionID: String = DirectChatLog.activeID {
         didSet { DirectChatLog.activeID = activeDirectSessionID }
@@ -383,10 +392,16 @@ final class AppStore: ObservableObject {
         activeDirectSessionID = session.id
     }
 
-    /// 往当前活跃的本地会话追加一条消息（system 提示不落盘）
+    /// 往当前活跃的本地会话追加一条消息（system 提示不落盘）。
+    /// 用户 2026-10-12：**没有会话就现建一个**，绝不静默丢弃 —— 这条守卫原来
+    /// 在 directSessions 为空时直接 return，表现就是「发不出去」且没有任何提示。
     func appendDirectMessage(_ message: DirectChatMessage) {
         guard message.role != "system" else { return }
-        guard !directSessions.isEmpty else { return }
+        if directSessions.isEmpty {
+            let fresh = DirectChatSession(title: "新对话")
+            directSessions = [fresh]
+            activeDirectSessionID = fresh.id
+        }
         var index = directSessions.firstIndex(where: { $0.id == activeDirectSessionID }) ?? 0
         if index >= directSessions.count { index = 0 }
         directSessions[index].messages.append(message)
