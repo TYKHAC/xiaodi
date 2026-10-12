@@ -372,6 +372,14 @@ final class AppStore: ObservableObject {
         }
     }
 
+    /// 用户昵称（用户 2026-10-12：「点击头像可以编辑我的个人信息」）。
+    /// 独立 agent 气泡里用户侧的名字、抽屉底部头像行都显示它。
+    @Published var userNickname: String =
+        UserDefaults.standard.string(forKey: "hestia.nickname") ?? "你"
+    {
+        didSet { UserDefaults.standard.set(userNickname, forKey: "hestia.nickname") }
+    }
+
     /// 可选符号头像（16 个，够用不花哨）
     static let userAvatarSymbols: [String] = [
         "person.fill", "person.crop.circle.fill", "figure.walk", "face.smiling",

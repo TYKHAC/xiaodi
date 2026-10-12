@@ -2244,10 +2244,9 @@ final class StreamingAssistantCell: StableSelfSizingCollectionViewCell {
     static let reuseIdentifier = "StreamingAssistantCell"
 
     private let whaleView: UIImageView = {
-        // Hestia：去 DeepSeek 化 —— 鲸鱼素材 → 系统水波纹符号
-        // ⚠️ UIImageView 没有 systemSymbolName 初始化器（第23轮教训：别臆造API），走 UIImage(systemName:)
-        let view = UIImageView(image: UIImage(systemName: "water.waves"))
-        view.tintColor = .secondaryLabel
+        // 用户 2026-10-12「去掉波浪」：流式助手头部不再用水波纹符号，
+        // 换成 Hestia 品牌标（PNG，和 DirectChatView 里助手头像同一素材）。
+        let view = UIImageView(image: UIImage(named: "HestiaMark"))
         view.contentMode = .scaleAspectFit
         view.translatesAutoresizingMaskIntoConstraints = false
         return view

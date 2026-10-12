@@ -596,10 +596,7 @@ struct ConversationView: View {
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            // Hestia：去 DeepSeek 化 —— 鲸鱼图 → 品牌水波纹（和抽屉/直连页同一视觉语言）
-            Image(systemName: "water.waves")
-                .font(.system(size: 44, weight: .light))
-                .foregroundStyle(DSHColor.ocean)
+            // 用户 2026-10-12「去掉波浪」：空态 hero 不再放水波纹图，纯文字即可。
             Text("待命").font(.title3.weight(.semibold))
             Text("发送任务后，工具调用、推理进度和最终回复会实时返回。")
                 .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -3650,9 +3647,11 @@ struct ConversationRow: View {
         case .assistant:
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 9) {
-                    Image(systemName: "water.waves")
-                        .font(.system(size: 22, weight: .light))
-                        .foregroundStyle(.primary)
+                    Image("HestiaMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                     Text(item.title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)

@@ -241,7 +241,7 @@ struct DirectChatView: View {
                 HStack(alignment: .top, spacing: 9) {
                     Spacer(minLength: 0)
                     VStack(alignment: .trailing, spacing: 3) {
-                        Text("你")
+                        Text(store.userNickname)
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                         if let imageName, let image = DirectImageStore.load(named: imageName) {
