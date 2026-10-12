@@ -292,7 +292,12 @@ struct DirectChatClient {
 
             private enum Keys: String, CodingKey { case role, content }
             private enum PartKeys: String, CodingKey { case type, text, image_url }
-            private enum URLKeys: String, CodingKey { case url }
+
+            /// image_url 的载荷（{"url": "data:image/jpeg;base64,..."}）。
+            /// 单独一个扁平结构体装它 —— 不能用 imagePart.nestedContainer(keyedBy:)：
+            /// imagePart 是 **KeyedEncodingContainer**，它的 nestedContainer 需要 forKey 参数，
+            /// 少了就编译不过（run63 的 "missing argument for parameter 'forKey'"）。
+            struct URLBox: Encodable { let url: String }
 
             func encode(to encoder: Encoder) throws {
                 var box = encoder.container(keyedBy: Keys.self)
@@ -302,10 +307,11 @@ struct DirectChatClient {
                     return
                 }
                 var parts = box.nestedUnkeyedContainer(forKey: .content)
+                // 图片 part（OpenAI 多模态格式：先图后文）
                 var imagePart = parts.nestedContainer(keyedBy: PartKeys.self)
                 try imagePart.encode("image_url", forKey: .type)
-                var urlBox = imagePart.nestedContainer(keyedBy: URLKeys.self)
-                try urlBox.encode("data:image/jpeg;base64,\(imageBase64)", forKey: .url)
+                try imagePart.encode(URLBox(url: "data:image/jpeg;base64,\(imageBase64)"), forKey: .image_url)
+                // 文字 part
                 var textPart = parts.nestedContainer(keyedBy: PartKeys.self)
                 try textPart.encode("text", forKey: .type)
                 try textPart.encode(text.isEmpty ? "请看这张图。" : text, forKey: .text)
