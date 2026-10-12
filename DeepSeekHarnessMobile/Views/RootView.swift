@@ -265,15 +265,10 @@ private struct RootNavigationHost: View, Equatable {
     private func drawerPanel(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                // Hestia：品牌字样只留一处（首页顶栏）—— 抽屉这里只放水波纹图形，
-                // 用户 2026-10-10「app内不要有那么多Hestia字样」。
-                HStack(spacing: 8) {
-                    Image(systemName: "water.waves")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(DSHColor.ocean)
-                }
-                .padding(.leading, 12)
-                .padding(.bottom, 14)
+                // 用户 2026-10-12「去掉波浪」：抽屉顶部那个水波纹品牌标记删掉。
+                // 品牌字样本来就只留首页顶栏一处（用户 2026-10-10），这里不需要任何标记。
+                Color.clear.frame(height: 6)
+                    .padding(.bottom, 8)
 
                 drawerItem("新会话", icon: {
                     Image(systemName: "square.and.pencil")
