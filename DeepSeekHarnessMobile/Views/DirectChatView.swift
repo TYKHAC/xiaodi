@@ -115,7 +115,7 @@ struct DirectChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(store.activeDirectSession.messages) { message in
-                        bubble(message.role, message.content)
+                        bubble(message.role, message.content, imageName: message.imageName)
                     }
                     if !streamingText.isEmpty {
                         bubble("assistant", streamingText)
@@ -134,7 +134,7 @@ struct DirectChatView: View {
         }
     }
 
-    private func bubble(_ role: String, _ text: String) -> some View {
+    private func bubble(_ role: String, _ text: String, imageName: String? = nil) -> some View {
         // 用户 2026-10-11 定案：**对话不要框框** —— 纯文字，靠左右对齐区分；
         // Hestia 这边带「图标 + 名字」（头像 + Hestia 小标）。
         Group {
@@ -143,11 +143,24 @@ struct DirectChatView: View {
                     Text("你")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                    Text(text)
-                        .textSelection(.enabled)
-                        .font(.system(size: 15))
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.trailing)
+                    if let imageName, let image = DirectImageStore.load(named: imageName) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 220, maxHeight: 280)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                            )
+                    }
+                    if !text.isEmpty {
+                        Text(text)
+                            .textSelection(.enabled)
+                            .font(.system(size: 15))
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
@@ -363,14 +376,17 @@ struct DirectChatView: View {
     }
 
     private var sendDisabled: Bool {
-        isStreaming ? false : draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        // 有图没字也能发（用户 2026-10-12）
+        isStreaming ? false : (draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && pendingImage == nil)
     }
 
     // MARK: - 发送 / 流式
 
     private func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isStreaming else { return }
+        // 用户 2026-10-12：光有图没字也能发
+        let attached = pendingImage
+        guard !text.isEmpty || attached != nil, !isStreaming else { return }
         errorMessage = nil
 
         let config = DirectConnectionConfig.saved
@@ -379,19 +395,27 @@ struct DirectChatView: View {
             return
         }
 
-        let outgoing = DirectChatMessage(role: "user", content: text)
+        // 图片落盘，消息里只留文件名
+        var imageName: String?
+        if let attached {
+            imageName = DirectImageStore.save(attached)
+            pendingImage = nil
+        }
+
+        let outgoing = DirectChatMessage(role: "user", content: text, imageName: imageName)
         store.appendDirectMessage(outgoing)
         draft = ""
         streamingText = ""
         isStreaming = true
 
         let history = [systemPrompt] + store.activeDirectSession.messages
+        let payload = Self.outgoingPayload(from: history)
         streamTask = Task { @MainActor in
             do {
                 let stream = DirectChatClient().stream(
                     config: config,
                     apiKey: apiKey,
-                    messages: history
+                    outgoing: payload
                 )
                 for try await chunk in stream {
                     if Task.isCancelled { break }
@@ -408,6 +432,25 @@ struct DirectChatView: View {
                     self.errorMessage = errorText(error)
                 }
             }
+        }
+    }
+
+    /// 把本地会话编成出网负载。
+    /// 图片按 base64 内联进请求 —— 每轮都重发太费流量/token，所以只带**最近 2 张**附图的
+    /// 消息（够「接着问这张图」用）；更早的图降级成一句文字标记，历史和上下文不断。
+    static func outgoingPayload(from messages: [DirectChatMessage]) -> [DirectChatClient.Outgoing] {
+        let imageIndices = messages.indices.filter { messages[$0].imageName != nil }
+        let keep = Set(imageIndices.suffix(2))
+        return messages.enumerated().map { index, message in
+            var base64: String?
+            if keep.contains(index), let name = message.imageName {
+                base64 = DirectImageStore.base64JPEG(named: name)
+            }
+            var text = message.content
+            if message.imageName != nil && base64 == nil && text.isEmpty {
+                text = "（这里是之前发的一张图）"
+            }
+            return DirectChatClient.Outgoing(role: message.role, text: text, imageBase64: base64)
         }
     }
 

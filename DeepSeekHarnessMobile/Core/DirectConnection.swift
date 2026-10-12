@@ -112,10 +112,71 @@ enum DirectAPIKeyStore {
 struct DirectChatMessage: Codable, Equatable, Identifiable, Hashable {
     var role: String // "user" | "assistant" | "system"
     var content: String
+    /// 图片附件的文件名（存在磁盘上，见 DirectImageStore）—— 用户 2026-10-12：
+    /// 「图片要能发给模型」。旧消息没有这个字段 → 解码时自动为 nil（向后兼容）。
+    var imageName: String?
     /// 只用来做 ForEach 的稳定 id
     var stamp = Date().timeIntervalSince1970
 
     var id: Double { stamp }
+}
+
+/// 直连对话的图片附件仓储 —— 用户 2026-10-12：「图片送模型」。
+/// 图片写**磁盘**（Documents/direct-images/），消息里只留文件名：
+/// 会话是序列化进 UserDefaults 的，把 base64 塞进消息里会很快把默认存储撑爆。
+enum DirectImageStore {
+    private static var dir: URL {
+        let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let d = base.appendingPathComponent("direct-images", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: d.path) {
+            try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+        }
+        return d
+    }
+
+    static func url(named name: String) -> URL { dir.appendingPathComponent(name) }
+
+    /// 等比缩到最长边 maxDimension 以内（省流量也省 token）
+    static func downscale(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let w = image.size.width
+        let h = image.size.height
+        guard w > 0, h > 0 else { return image }
+        let longest = max(w, h)
+        guard longest > maxDimension else { return image }
+        let scale = maxDimension / longest
+        let target = CGSize(width: (w * scale).rounded(), height: (h * scale).rounded())
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+    }
+
+    /// 存一张图 → 返回文件名；失败返回 nil
+    static func save(_ image: UIImage) -> String? {
+        let small = downscale(image, maxDimension: 1600)
+        guard let data = small.jpegData(compressionQuality: 0.85) else { return nil }
+        let name = UUID().uuidString + ".jpg"
+        do {
+            try data.write(to: url(named: name), options: .atomic)
+            return name
+        } catch {
+            return nil
+        }
+    }
+
+    /// 读回来给气泡显示
+    static func load(named name: String) -> UIImage? {
+        guard let data = try? Data(contentsOf: url(named: name)) else { return nil }
+        return UIImage(data: data)
+    }
+
+    /// 出网用的 base64 JPEG（不带 "data:image/jpeg;base64," 前缀）
+    static func base64JPEG(named name: String, maxDimension: CGFloat = 1280) -> String? {
+        guard let image = load(named: name) else { return nil }
+        let small = downscale(image, maxDimension: maxDimension)
+        return small.jpegData(compressionQuality: 0.8)?.base64EncodedString()
+    }
 }
 
 /// 独立 agent 的本地会话 —— 用户 2026-10-09 产品决策：
@@ -202,19 +263,52 @@ struct DirectChatClient {
         let choices: [Choice]
     }
 
-    /// 干净的请求体：只带 role/content（时间戳是本地图字段，绝不出网）
+    /// 出网的一条消息：文本 + 可选图片 base64（不带 "data:image/jpeg;base64," 前缀）。
+    /// 用户 2026-10-12：「图片送模型」。
+    struct Outgoing {
+        let role: String
+        let text: String
+        let imageBase64: String?
+    }
+
+    /// 干净的请求体：只带 role/content（时间戳、文件名这些本地字段绝不出网）。
+    /// 有图时按 OpenAI 多模态格式把 content 编成 parts 数组（image_url + text），
+    /// 没图时仍是纯字符串 —— 老接口/老模型不受影响。
     private static func make(
         config: DirectConnectionConfig,
         apiKey: String,
-        messages: [DirectChatMessage],
+        outgoing: [Outgoing],
         stream: Bool,
         maxTokens: Int?
     ) throws -> URLRequest {
-        struct Body: Encodable {
-            struct Item: Encodable {
-                let role: String
-                let content: String
+        // 注意顺序：Item 必须声明在 Body 之前 —— 函数体内的局部类型不能用未声明类型。
+        struct Item: Encodable {
+            let role: String
+            let text: String
+            let imageBase64: String?
+
+            private enum Keys: String, CodingKey { case role, content }
+            private enum PartKeys: String, CodingKey { case type, text, image_url }
+            private enum URLKeys: String, CodingKey { case url }
+
+            func encode(to encoder: Encoder) throws {
+                var box = encoder.container(keyedBy: Keys.self)
+                try box.encode(role, forKey: .role)
+                guard let imageBase64, !imageBase64.isEmpty else {
+                    try box.encode(text, forKey: .content)
+                    return
+                }
+                var parts = box.nestedUnkeyedContainer(forKey: .content)
+                var imagePart = parts.nestedContainer(keyedBy: PartKeys.self)
+                try imagePart.encode("image_url", forKey: .type)
+                var urlBox = imagePart.nestedContainer(keyedBy: URLKeys.self)
+                try urlBox.encode("data:image/jpeg;base64,\(imageBase64)", forKey: .url)
+                var textPart = parts.nestedContainer(keyedBy: PartKeys.self)
+                try textPart.encode("text", forKey: .type)
+                try textPart.encode(text.isEmpty ? "请看这张图。" : text, forKey: .text)
             }
+        }
+        struct Body: Encodable {
             let model: String
             let messages: [Item]
             let stream: Bool
@@ -233,18 +327,18 @@ struct DirectChatClient {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONEncoder().encode(Body(
             model: config.model,
-            messages: messages.map { .init(role: $0.role, content: $0.content) },
+            messages: outgoing.map { Item(role: $0.role, text: $0.text, imageBase64: $0.imageBase64) },
             stream: stream,
             max_tokens: maxTokens
         ))
         return request
     }
 
-    /// 流式对话：逐段 yield 助手增量文本。
+    /// 流式对话：逐段 yield 助手增量文本（带图版本）。
     func stream(
         config: DirectConnectionConfig,
         apiKey: String,
-        messages: [DirectChatMessage]
+        outgoing: [Outgoing]
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
@@ -252,7 +346,7 @@ struct DirectChatClient {
                     let request = try Self.make(
                         config: config,
                         apiKey: apiKey,
-                        messages: messages,
+                        outgoing: outgoing,
                         stream: true,
                         maxTokens: nil
                     )
@@ -286,13 +380,25 @@ struct DirectChatClient {
         }
     }
 
+    /// 流式对话（纯文本，老入口 —— 保留给只发文字的调用方）
+    func stream(
+        config: DirectConnectionConfig,
+        apiKey: String,
+        messages: [DirectChatMessage]
+    ) -> AsyncThrowingStream<String, Error> {
+        stream(
+            config: config,
+            apiKey: apiKey,
+            outgoing: messages.map { Outgoing(role: $0.role, text: $0.content, imageBase64: nil) }
+        )
+    }
+
     /// 连接测试：小请求一发，返回模型的首段回话。
     func test(config: DirectConnectionConfig, apiKey: String) async throws -> String {
-        let hi = DirectChatMessage(role: "user", content: "hi")
         let request = try Self.make(
             config: config,
             apiKey: apiKey,
-            messages: [hi],
+            outgoing: [Outgoing(role: "user", text: "hi", imageBase64: nil)],
             stream: false,
             maxTokens: 16
         )
