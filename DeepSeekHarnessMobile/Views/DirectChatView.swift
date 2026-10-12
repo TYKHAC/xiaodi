@@ -317,6 +317,16 @@ struct DirectChatView: View {
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
+            // 麦克风/语音识别权限被拒时给出可见提示 —— 用户 2026-10-12「语音没实现」：
+            // 之前 permissionDenied 被设置后没有任何界面读它，按住圆球只是静默没反应。
+            if let perm = store.voice.permissionDenied, !perm.isEmpty {
+                Text(perm)
+                    .font(.system(size: 12))
+                    .foregroundStyle(ZhuTheme.dangerRed)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 6)
+            }
+
             HStack(spacing: 9) {
                 // 相机（最左）：点按 = 拍照；长按 = 下方弹图库（用户 2026-10-11 第 2 项）
                 Image(systemName: "camera")
@@ -388,34 +398,35 @@ struct DirectChatView: View {
         .background(.ultraThinMaterial)
     }
 
-    /// 按住说话 = 照微信那套（用户 2026-10-11）：
-    /// 左上「取消」、右上「转文字」，中间音量波形，球下方「松开 发送」。
-    /// 左上滑 → 取消变红；右上滑 → 转文字变红；没滑动的那一侧**虚化**（用户 2026-10-11 图二）。
+    /// 按住说话浮层（用户 2026-10-12 设计稿定案）：
+    /// 两片**弧形、一样大**（各 112×64，上圆下平，左右各张开 6°，像两片花瓣托着圆球）——
+    /// 左「取消」右「转文字」，中间一排音量波形；球下方「松开 发送」。
+    /// 左上滑 → 取消变赤红；右上滑 → 转文字变赤红；没滑的那侧虚化。
     private var voiceGestures: some View {
-        VStack(spacing: 12) {
-            HStack {
-                // 用户图二：不要箭头、字体再大一点；非激活侧虚化
-                Text(voiceSlide == .cancel ? "松开 取消" : "取消")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(voiceSlide == .cancel ? ZhuTheme.dangerRed : Color.primary)
-                    .opacity(hintOpacity(for: .cancel))
-                Spacer(minLength: 0)
-                Text(voiceSlide == .toText ? "转文字 ✓" : "转文字")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(voiceSlide == .toText ? ZhuTheme.dangerRed : Color.primary)
-                    .opacity(hintOpacity(for: .toText))
-            }
-            .padding(.horizontal, 18)
-
-            // 音量波形（七根）
-            HStack(alignment: .center, spacing: 3) {
-                ForEach(0..<7, id: \.self) { index in
-                    Capsule()
-                        .fill(Color.primary.opacity(0.75))
-                        .frame(width: 4, height: waveHeight(index))
+        VStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 8) {
+                arcPill(
+                    title: voiceSlide == .cancel ? "松开 取消" : "取消",
+                    active: voiceSlide == .cancel,
+                    dim: hintOpacity(for: .cancel)
+                )
+                // 音量波形（七根，居中）
+                HStack(alignment: .center, spacing: 3) {
+                    ForEach(0..<7, id: \.self) { index in
+                        Capsule()
+                            .fill(Color.primary.opacity(0.75))
+                            .frame(width: 4, height: waveHeight(index))
+                    }
                 }
+                .frame(height: 26)
+                arcPill(
+                    title: voiceSlide == .toText ? "转文字 ✓" : "转文字",
+                    active: voiceSlide == .toText,
+                    dim: hintOpacity(for: .toText)
+                )
             }
-            .frame(height: 26)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 8)
 
             Text(voiceSlide == .cancel
                  ? "松开手指，取消发送"
@@ -425,6 +436,21 @@ struct DirectChatView: View {
         }
         .frame(maxWidth: .infinity)
         .animation(.easeOut(duration: 0.15), value: voiceSlide)
+    }
+
+    /// 单片弧形提示（112×64，上圆下平；激活时赤红）
+    private func arcPill(title: String, active: Bool, dim: Double) -> some View {
+        ZStack {
+            ArcPillShape()
+                .fill(active ? ZhuTheme.dangerRed.opacity(0.12) : Color.primary.opacity(0.08))
+            ArcPillShape()
+                .stroke(active ? ZhuTheme.dangerRed : Color.primary.opacity(0.28), lineWidth: 1)
+            Text(title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(active ? ZhuTheme.dangerRed : Color.primary)
+        }
+        .frame(width: 112, height: 64)
+        .opacity(dim)
     }
 
     /// 两侧提示的透明度：正在滑的那一侧清晰，另一侧虚化；
@@ -556,4 +582,31 @@ struct DirectChatView: View {
 /// 直连设置页跳转信号（由宿主接）
 extension Notification.Name {
     static let zxjOpenDirectSettings = Notification.Name("zxj.openDirectSettings")
+}
+
+/// 弧形片（用户 2026-10-12 设计稿）：上圆下平，左右各向内张开 spread 度。
+/// 下边是直线、上边用二次曲线拱起 —— 像两片花瓣托着圆球。
+private struct ArcPillShape: Shape {
+    var spread: CGFloat = 6
+
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        // 上端比下端窄：两侧各向内收 h*tan(6°)，形成「张开」
+        let inset = h * tan(spread * .pi / 180)
+        var p = Path()
+        // 左下角 → 左上（上端内收）
+        p.move(to: CGPoint(x: rect.minX + inset, y: rect.minY))
+        // 上边：拱起（控制点在上方，像圆球底部的弧）
+        p.addQuadCurve(
+            to: CGPoint(x: rect.maxX - inset, y: rect.minY),
+            control: CGPoint(x: rect.midX, y: rect.minY - h * 0.5)
+        )
+        // 右上 → 右下
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        // 下边：平直
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        p.closeSubpath()
+        return p
+    }
 }
