@@ -30,12 +30,34 @@ struct DirectChatView: View {
     /// CI 视觉自查：SIMCTL_CHILD_ZXJ_SHOT=<模式> 把某个界面状态直接摆出来（正常启动为空）
     private var shotMode: String? { ProcessInfo.processInfo.environment["ZXJ_SHOT"] }
 
-    /// 按截图模式摆初始状态（键盘模式 / 按住说话的三个变体）
+    /// 按截图模式摆初始状态（键盘模式 / 按住说话的三个变体 / 图片气泡）
     private func applyShotMode() {
         guard let mode = shotMode else { return }
         if mode == "chat-keyboard" { keyboardMode = true }
         if mode == "chat-holding-cancel" { voiceSlide = .cancel }
         if mode == "chat-holding-totext" { voiceSlide = .toText }
+        if mode == "chat-image" { seedImageShot() }
+    }
+
+    /// CI 专用：造一张测试图走一遍「落盘 → 读回 → 气泡渲染」，
+    /// 这样模拟器能替我们验图片这条路（真机上还要接 API Key 才能看模型回答）。
+    private func seedImageShot() {
+        guard store.activeDirectSession.messages.isEmpty else { return }
+        let size = CGSize(width: 320, height: 320)
+        let image = UIGraphicsImageRenderer(size: size).image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+            UIColor.black.setStroke()
+            for step in stride(from: 0, through: 320, by: 16) {
+                ctx.cgContext.move(to: CGPoint(x: step, y: 0))
+                ctx.cgContext.addLine(to: CGPoint(x: 0, y: step))
+            }
+            UIColor(red: 0.847, green: 0.137, blue: 0.165, alpha: 1).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: 96, y: 96, width: 128, height: 128))
+        }
+        guard let name = DirectImageStore.save(image) else { return }
+        store.appendDirectMessage(DirectChatMessage(role: "user", content: "这张图里有什么？", imageName: name))
+        store.appendDirectMessage(DirectChatMessage(role: "assistant", content: "（示例回答）我看到一张网点测试图，中间有一个赤红的圆。"))
     }
 
     /// 直连上下文里给模型的身份。远程（电脑端）身份由 DSH 自己管，这里只管直连。

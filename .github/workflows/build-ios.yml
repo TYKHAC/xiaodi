@@ -206,8 +206,8 @@ jobs:
           # 逐个按钮/状态：每个路由重启一次 App 截一张（用户 2026-10-11
           # 「多点图片，每个按钮点击后是什么样子」）。
           # chat-keyboard / chat-holding / chat-holding-cancel / chat-holding-totext
-          # / settings-model / settings-font / settings-remote
-          for SHOT_MODE in chat-keyboard chat-holding chat-holding-cancel chat-holding-totext settings-model settings-font settings-remote; do
+          # / chat-image（图片气泡：验落盘→读回→渲染）/ settings-model / settings-font / settings-remote
+          for SHOT_MODE in chat-keyboard chat-holding chat-holding-cancel chat-holding-totext chat-image settings-model settings-font settings-remote; do
             xcrun simctl terminate "$UDID" "$BUNDLE" || true
             xcrun simctl ui "$UDID" appearance light
             SIMCTL_CHILD_ZXJ_SHOT="$SHOT_MODE" xcrun simctl launch "$UDID" "$BUNDLE"
