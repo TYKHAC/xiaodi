@@ -281,6 +281,7 @@ struct DirectChatClient {
         config: DirectConnectionConfig,
         apiKey: String,
         outgoing: [Outgoing],
+        suffix: String,
         stream: Bool,
         maxTokens: Int?
     ) throws -> URLRequest {
@@ -323,12 +324,8 @@ struct DirectChatClient {
             let stream: Bool
             let max_tokens: Int?
         }
-        let url = URL(string: {
-            var base = config.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-            while base.hasSuffix("/") { base.removeLast() }
-            return base + "/chat/completions"
-        }())
-        guard let url else { throw DirectChatError.badEndpoint }
+        let base = Self.normalizedBase(config.baseURL)
+        guard let url = URL(string: base + suffix), !base.isEmpty else { throw DirectChatError.badEndpoint }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 180
@@ -343,7 +340,68 @@ struct DirectChatClient {
         return request
     }
 
+    /// 记住上次成功的路径后缀（UserDefaults）—— 之后直接命中，不再每次试错
+    enum PathMemory {
+        private static let key = "xiaodi.chatPathSuffix"
+        static var suffix: String? {
+            get { UserDefaults.standard.string(forKey: key) }
+            set {
+                if let newValue { UserDefaults.standard.set(newValue, forKey: key) }
+                else { UserDefaults.standard.removeObject(forKey: key) }
+            }
+        }
+    }
+
+    /// 归一化用户填的接口地址。用户 2026-10-12 真机上遇到 **404**，
+    /// 全网查到的两个经典成因都在这里处理掉：
+    ///   ① 地址少了 /v1 → 我们会去请求 /chat/completions，服务端没这个路径
+    ///   ② 把完整地址（…/v1/chat/completions）整个粘进来 → 再拼一次就成了
+    ///      /chat/completions/chat/completions（OpenAI 社区那条 404 就是它）
+    static func normalizedBase(_ raw: String) -> String {
+        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        while s.hasSuffix("/") { s.removeLast() }
+        for tail in ["/chat/completions", "/completions"] where s.hasSuffix(tail) {
+            s = String(s.dropLast(tail.count))
+            while s.hasSuffix("/") { s.removeLast() }
+        }
+        return s
+    }
+
+    /// 最后一段看着像版本号吗（v1 / v2 / v1beta …）
+    private static func endsWithVersionSegment(_ base: String) -> Bool {
+        let last = base.split(separator: "/").last.map(String.init) ?? ""
+        guard last.first == "v" else { return false }
+        return last.dropFirst().first?.isNumber == true
+    }
+
+    /// 候选路径后缀，按优先级：
+    ///   记忆里成功过的 → /chat/completions → （没写版本段才加）/v1/chat/completions
+    static func candidateSuffixes(normalizedBase base: String) -> [String] {
+        var out: [String] = []
+        if let remembered = PathMemory.suffix { out.append(remembered) }
+        out.append("/chat/completions")
+        if !base.isEmpty && !endsWithVersionSegment(base) {
+            out.append("/v1/chat/completions")
+        }
+        return out.reduce(into: [String]()) { acc, item in
+            if !acc.contains(item) { acc.append(item) }
+        }
+    }
+
+    /// 人话版错误：404 直接把「多半是少了 /v1」告诉用户，并列出试过的地址
+    static func friendlyError(status: Int, body: String, tried: [String]) -> String {
+        if status == 404 || status == 405 {
+            let list = tried.joined(separator:"、")
+            return "HTTP \(status)：接口地址不对（试过 \(list)）。多半是地址少了 /v1 —— 例：https://your-relay.com/v1"
+        }
+        if status == 401 || status == 403 {
+            return "HTTP \(status)：API Key 被拒（Key 不对、没权限或余额不足）。\(body.prefix(160))"
+        }
+        return "HTTP \(status)：\(body.prefix(300))"
+    }
+
     /// 流式对话：逐段 yield 助手增量文本（带图版本）。
+    /// 404/405 会自动换下一个候选地址重试，成功后记住那条。
     func stream(
         config: DirectConnectionConfig,
         apiKey: String,
@@ -351,39 +409,67 @@ struct DirectChatClient {
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
-                do {
-                    let request = try Self.make(
-                        config: config,
-                        apiKey: apiKey,
-                        outgoing: outgoing,
-                        stream: true,
-                        maxTokens: nil
-                    )
-                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
-                    guard let http = response as? HTTPURLResponse else {
-                        throw DirectChatError.server("响应不是 HTTP")
-                    }
-                    guard (200..<300).contains(http.statusCode) else {
-                        var body = ""
-                        for try await line in bytes.lines { body += line; if body.count > 400 { break } }
-                        throw DirectChatError.server("HTTP \(http.statusCode)：\(body.prefix(300))")
-                    }
-                    for try await line in bytes.lines {
+                let base = Self.normalizedBase(config.baseURL)
+                let suffixes = Self.candidateSuffixes(normalizedBase: base)
+                var tried: [String] = []
+                var lastBody = ""
+                var lastStatus = 0
+                for suffix in suffixes {
+                    do {
+                        tried.append(base + suffix)
+                        let request = try Self.make(
+                            config: config,
+                            apiKey: apiKey,
+                            outgoing: outgoing,
+                            suffix: suffix,
+                            stream: true,
+                            maxTokens: nil
+                        )
+                        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                        guard let http = response as? HTTPURLResponse else {
+                            throw DirectChatError.server("响应不是 HTTP")
+                        }
+                        lastStatus = http.statusCode
+                        // 路径不对 → 收个体、换下一个候选
+                        if http.statusCode == 404 || http.statusCode == 405 {
+                            var body = ""
+                            for try await line in bytes.lines { body += line; if body.count > 200 { break } }
+                            lastBody = body
+                            continue
+                        }
+                        guard (200..<300).contains(http.statusCode) else {
+                            var body = ""
+                            for try await line in bytes.lines { body += line; if body.count > 400 { break } }
+                            throw DirectChatError.server(Self.friendlyError(status: http.statusCode, body: body, tried: tried))
+                        }
+                        // 通了 —— 记住这条路径
+                        Self.PathMemory.suffix = suffix
+                        for try await line in bytes.lines {
+                            if Task.isCancelled { break }
+                            let trimmed = line.trimmingCharacters(in: .whitespaces)
+                            guard trimmed.hasPrefix("data:") else { continue }
+                            let payload = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                            if payload == "[DONE]" { break }
+                            guard let data = payload.data(using: .utf8),
+                                  let chunk = try? JSONDecoder().decode(StreamChunk.self, from: data),
+                                  let text = chunk.choices.first?.delta?.content,
+                                  !text.isEmpty else { continue }
+                            continuation.yield(text)
+                        }
+                        continuation.finish()
+                        return
+                    } catch let error as DirectChatError {
+                        continuation.finish(throwing: error)
+                        return
+                    } catch {
                         if Task.isCancelled { break }
-                        let trimmed = line.trimmingCharacters(in: .whitespaces)
-                        guard trimmed.hasPrefix("data:") else { continue }
-                        let payload = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-                        if payload == "[DONE]" { break }
-                        guard let data = payload.data(using: .utf8),
-                              let chunk = try? JSONDecoder().decode(StreamChunk.self, from: data),
-                              let text = chunk.choices.first?.delta?.content,
-                              !text.isEmpty else { continue }
-                        continuation.yield(text)
+                        continuation.finish(throwing: error)
+                        return
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
                 }
+                continuation.finish(throwing: DirectChatError.server(
+                    Self.friendlyError(status: lastStatus == 0 ? 404 : lastStatus, body: lastBody, tried: tried)
+                ))
             }
             continuation.onTermination = { _ in task.cancel() }
         }
@@ -403,25 +489,47 @@ struct DirectChatClient {
     }
 
     /// 连接测试：小请求一发，返回模型的首段回话。
+    /// 和 stream 同一套候选地址逻辑 —— 404 自动换候选，成了就记住，
+    /// 并在成功文案里带上「实际用的是哪个地址」，方便用户判断自己填对没有。
     func test(config: DirectConnectionConfig, apiKey: String) async throws -> String {
-        let request = try Self.make(
-            config: config,
-            apiKey: apiKey,
-            outgoing: [Outgoing(role: "user", text: "hi", imageBase64: nil)],
-            stream: false,
-            maxTokens: 16
-        )
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw DirectChatError.server("响应不是 HTTP") }
-        guard (200..<300).contains(http.statusCode) else {
-            let body = String(data: data.prefix(400), encoding: .utf8) ?? ""
-            throw DirectChatError.server("HTTP \(http.statusCode)：\(body.prefix(300))")
+        let base = Self.normalizedBase(config.baseURL)
+        let suffixes = Self.candidateSuffixes(normalizedBase: base)
+        var tried: [String] = []
+        var lastBody = ""
+        var lastStatus = 0
+        for suffix in suffixes {
+            let request = try Self.make(
+                config: config,
+                apiKey: apiKey,
+                outgoing: [Outgoing(role: "user", text: "hi", imageBase64: nil)],
+                suffix: suffix,
+                stream: false,
+                maxTokens: 16
+            )
+            tried.append(base + suffix)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw DirectChatError.server("响应不是 HTTP") }
+            if http.statusCode == 404 || http.statusCode == 405 {
+                lastStatus = http.statusCode
+                lastBody = String(data: data.prefix(200), encoding: .utf8) ?? ""
+                continue
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                let body = String(data: data.prefix(400), encoding: .utf8) ?? ""
+                throw DirectChatError.server(Self.friendlyError(status: http.statusCode, body: body, tried: tried))
+            }
+            Self.PathMemory.suffix = suffix
+            guard let parsed = try? JSONDecoder().decode(PlainChunk.self, from: data),
+                  let text = parsed.choices.first?.message?.content, !text.isEmpty else {
+                return "已连通（地址 \(base + suffix)）"
+            }
+            return "已连通（地址 \(base + suffix)）：" + text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        guard let parsed = try? JSONDecoder().decode(PlainChunk.self, from: data),
-              let text = parsed.choices.first?.message?.content, !text.isEmpty else {
-            return "已连通（响应格式未解析出文本）"
-        }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        throw DirectChatError.server(Self.friendlyError(
+            status: lastStatus == 0 ? 404 : lastStatus,
+            body: lastBody,
+            tried: tried
+        ))
     }
 }
 

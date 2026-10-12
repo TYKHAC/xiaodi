@@ -158,7 +158,7 @@ struct SettingsView: View {
                 }
             } footer: {
                 if chatModelExpanded {
-                Text("填好接口地址、模型名和 API Key，这个壳就是一个完整的 agent（不再需要任何「模式」开关）。Key 只存本机 Keychain。")
+                Text("填好接口地址、模型名和 API Key，这个壳就是一个完整的 agent（不再需要任何「模式」开关）。Key 只存本机 Keychain。地址末尾写不写 /v1 都行 —— App 会自动试并记住能通的那个；「测试连接」成功时也会告诉你它实际用了哪个地址。")
                 }
             }
 
