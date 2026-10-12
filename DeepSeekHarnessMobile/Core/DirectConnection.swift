@@ -11,6 +11,9 @@
 
 import Foundation
 import Security
+// 图片附件（DirectImageStore）要用 UIImage / UIGraphicsImageRenderer ——
+// 这个文件原来只有 Foundation/Security，漏了 UIKit 会让 UIImage 找不到（run62 编译失败）
+import UIKit
 
 // MARK: - 配置
 
