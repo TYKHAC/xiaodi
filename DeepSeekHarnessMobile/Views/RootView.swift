@@ -503,10 +503,14 @@ private struct RootNavigationHost: View, Equatable {
         DragGesture(minimumDistance: 6)
             .onChanged { value in
                 if drawerDragStart == nil {
-                    // 用户 2026-10-12：「只有手机划到手机边缘的时候是返回，没碰到边缘就不可以返回，
-                    // 因为我要全选文字在屏幕中间又滑都会返回去」。
-                    // 所以：**只有从屏幕最左边缘 ~24pt 内起手**才认成抽屉手势；中间横滑一律忽略。
-                    guard value.startLocation.x < 24 else { return }
+                    // 用户 2026-10-12：「只有手机划到手机边缘的时候是返回，没碰到边缘就不可以返回」
+                    // 用户 2026-10-13 补充：「在对话左滑之后不能右滑返回对话」——
+                    // 上轮我把守卫加成了对所有情况生效，结果抽屉开着时右滑也关不掉了。
+                    // 正确规则：**抽屉关着**时，只有从最左边缘 ~24pt 内起手才算「开抽屉」；
+                    //          **抽屉开着**时，任何位置右滑都要能把它关掉。
+                    if drawerOffset == 0 {
+                        guard value.startLocation.x < 24 else { return }
+                    }
                     guard abs(value.translation.width) > abs(value.translation.height) * 1.2 else { return }
                     drawerDragStart = drawerOffset
                 }

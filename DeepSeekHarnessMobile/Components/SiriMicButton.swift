@@ -43,36 +43,40 @@ struct SiriMicButton: View {
     private var isIdle: Bool { !isRecording && !isTranscribing && !isSpeaking }
 
     var body: some View {
-        Button {
-            // 播报中 → 打断；空闲 → 进入"准备按住"的提示态
-            voice.togglePrimaryButton()
-        } label: {
-            ZStack {
-                // 高级感波纹 = 柔光晕 + 渐变细环（不再是硬边圆环，用户 2026-10-10
-                // 说「波纹不高级」）。球体外面先铺一层呼吸柔光，再让两条极细的
-                // 渐变环缓慢向外扩散、边缘就淡掉 —— 看起来像光在散开，不是画圈。
-                if !reduceMotion {
-                    softGlow
-                    if isRecording || isTranscribing {
-                        halo(scale: 1.02, opacity: 0.55, delay: 0)
-                        halo(scale: 1.30, opacity: 0.34, delay: 0.75)
-                        halo(scale: 1.58, opacity: 0.18, delay: 1.5)
-                    }
+        // 用户 2026-10-13：「按住语音键没有语音输入，没有取消和转文字」——
+        // 原来这颗球是包在 `Button { voice.togglePrimaryButton() }` 里的，
+        // 而 SwiftUI 里 **Button 自己的手势会吃掉挂在它上面的 .onLongPressGesture**，
+        // 于是 pressing 从不触发 → voice.beginRecording() 从不被调用 →
+        // state 永远不是 .listening → 既没有聆听态，也不会出现「取消 / 转文字」浮层。
+        // 改成普通视图：轻点用 onTapGesture，按住用 onLongPressGesture，两者不再打架。
+        ZStack {
+            // 高级感波纹 = 柔光晕 + 渐变细环（不再是硬边圆环，用户 2026-10-10
+            // 说「波纹不高级」）。球体外面先铺一层呼吸柔光，再让两条极细的
+            // 渐变环缓慢向外扩散、边缘就淡掉 —— 看起来像光在散开，不是画圈。
+            if !reduceMotion {
+                softGlow
+                if isRecording || isTranscribing {
+                    halo(scale: 1.02, opacity: 0.55, delay: 0)
+                    halo(scale: 1.30, opacity: 0.34, delay: 0.75)
+                    halo(scale: 1.58, opacity: 0.18, delay: 1.5)
                 }
-
-                // Hestia：圆球本身就是全部视觉 —— 任何状态下都显示这颗球，
-                // 状态差别交给球的动效（加速/变亮/呼吸）+ 波纹 + 文字标签。
-                PearlOrbView(isActive: !isIdle, isSpeaking: isSpeaking)
-                .frame(width: diameter, height: diameter)
-                .clipShape(Circle())
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1))
-                .shadow(color: shadowColor, radius: isRecording ? 14 : 6, y: 3)
-                .scaleEffect(orbScale)
             }
-            .frame(width: diameter * 1.5, height: diameter * 1.5)
-            .contentShape(Circle())
+
+            // Hestia：圆球本身就是全部视觉 —— 任何状态下都显示这颗球，
+            // 状态差别交给球的动效（加速/变亮/呼吸）+ 波纹 + 文字标签。
+            PearlOrbView(isActive: !isIdle, isSpeaking: isSpeaking)
+            .frame(width: diameter, height: diameter)
+            .clipShape(Circle())
+            .overlay(Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1))
+            .shadow(color: shadowColor, radius: isRecording ? 14 : 6, y: 3)
+            .scaleEffect(orbScale)
         }
-        .buttonStyle(.plain)
+        .frame(width: diameter * 1.5, height: diameter * 1.5)
+        .contentShape(Circle())
+        // 轻点：播报中 → 打断；空闲 → 取消（原来是 Button 的 action）
+        .onTapGesture {
+            voice.togglePrimaryButton()
+        }
         // 按住说话 —— 这是整个交互的核心
         .onLongPressGesture(
             minimumDuration: 0.12,      // 轻点不误触发
