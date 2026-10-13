@@ -40,6 +40,8 @@ private struct RootNavigationHost: View, Equatable {
     // 这样在对话页里左划也能开栏，不用先滑回列表页。
     @State private var drawerOffset: CGFloat = 0
     @State private var drawerDragStart: CGFloat?
+    /// 个人信息编辑 sheet（用户 2026-10-12：「点击头像可以编辑我的个人信息」）
+    @State private var showProfileEdit = false
     // 自动进对话只在"冷启动、用户还没做过任何选择"时生效一次：
     // 否则用户手动返回列表后，任意一次 sessions 变动都会把他又拽回对话页。
     @State private var primaryChoiceMade = false
@@ -337,6 +339,31 @@ private struct RootNavigationHost: View, Equatable {
 
                 Spacer(minLength: 0)
 
+                // 用户 2026-10-12：「设置固定在最下面，和我的头像也在下面，
+                // 点击头像可以编辑我的个人信息」—— 头像行在设置上面，设置钉在最底。
+                Button {
+                    showProfileEdit = true
+                } label: {
+                    HStack(spacing: 10) {
+                        drawerAvatar
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(store.userNickname.isEmpty ? "你" : store.userNickname)
+                                .font(.system(size: 16))
+                                .foregroundStyle(Color(uiColor: .label))
+                            Text("个人信息")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 8)
+
                 drawerItem("设置", icon: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 20, weight: .medium))
@@ -351,6 +378,33 @@ private struct RootNavigationHost: View, Equatable {
             .accessibilityHidden(progress == 0)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .sheet(isPresented: $showProfileEdit) {
+            ProfileEditView()
+                .environmentObject(store)
+        }
+    }
+
+    /// 抽屉里的小头像（26pt，和对话气泡里那个同一套写法）
+    private var drawerAvatar: some View {
+        Group {
+            if let name = store.userAvatarImageName, let image = DirectImageStore.load(named: name) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: store.userAvatarSymbol)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.primary.opacity(0.06))
+            }
+        }
+        .frame(width: 26, height: 26)
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
+        )
     }
 
     private func drawerItem<Icon: View>(
@@ -2165,5 +2219,125 @@ private struct ConversationNavigationStatus: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
+    }
+}
+
+/// 个人信息编辑（用户 2026-10-12：「点击头像可以编辑我的个人信息」）。
+/// 昵称 + 头像（符号或相册照片）。照片只存本机（DirectImageStore），不占 UserDefaults。
+private struct ProfileEditView: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var showLibrary = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 14) {
+                        bigAvatar
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(store.userNickname.isEmpty ? "你" : store.userNickname)
+                                .font(.system(size: 17, weight: .medium))
+                            Text("显示在你发出的消息旁边")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Button {
+                        showLibrary = true
+                    } label: {
+                        Label("从相册选照片", systemImage: "photo")
+                    }
+                    if store.userAvatarImageName != nil {
+                        Button {
+                            store.userAvatarImageName = nil
+                        } label: {
+                            Text("改用符号头像")
+                        }
+                    }
+                } header: {
+                    Text("头像")
+                }
+
+                Section {
+                    TextField("昵称", text: $store.userNickname)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("昵称")
+                } footer: {
+                    Text("留空就显示「你」。")
+                }
+
+                Section {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(AppStore.userAvatarSymbols, id: \.self) { symbol in
+                                Button {
+                                    store.userAvatarSymbol = symbol
+                                    store.userAvatarImageName = nil
+                                } label: {
+                                    Image(systemName: symbol)
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundStyle(.primary)
+                                        .frame(width: 42, height: 42)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(Color.primary.opacity(
+                                                    store.userAvatarImageName == nil
+                                                    && store.userAvatarSymbol == symbol ? 0.16 : 0.06))
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                } header: {
+                    Text("符号头像")
+                }
+            }
+            .navigationTitle("个人信息")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showLibrary) {
+                PhotoLibraryPicker { image in
+                    if let name = DirectImageStore.save(image) {
+                        store.userAvatarImageName = name
+                    }
+                }
+                .ignoresSafeArea()
+            }
+        }
+    }
+
+    private var bigAvatar: some View {
+        Group {
+            if let name = store.userAvatarImageName, let image = DirectImageStore.load(named: name) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: store.userAvatarSymbol)
+                    .font(.system(size: 26, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.primary.opacity(0.06))
+            }
+        }
+        .frame(width: 64, height: 64)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
+        )
     }
 }
