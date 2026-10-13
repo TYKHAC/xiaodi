@@ -250,7 +250,9 @@ struct ConversationView: View {
 
     var body: some View {
         ZStack {
-            conversationBackground.ignoresSafeArea()
+            // 用户 2026-10-13：主题原来只挂在直连页，看电脑会话这页还是纯系统背景（白板）。
+            // 换成主题背景（纸白/墨黑 + 极淡网点），全页统一。
+            DeepOceanBackground()
             VStack(spacing: 0) {
                 Picker("视图", selection: $activeView) {
                     Text("对话").tag(0)

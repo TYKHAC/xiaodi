@@ -42,6 +42,9 @@ private struct RootNavigationHost: View, Equatable {
     @State private var drawerDragStart: CGFloat?
     /// 个人信息编辑 sheet（用户 2026-10-12：「点击头像可以编辑我的个人信息」）
     @State private var showProfileEdit = false
+    /// 工作区文件 sheet —— 用户 2026-10-13：它原来藏在首页「···」菜单里，
+    /// 而用户要求删掉「···」，所以把它挪进左划抽屉（否则这个功能就没入口了）。
+    @State private var showsRootWorkspaceFiles = false
     // 自动进对话只在"冷启动、用户还没做过任何选择"时生效一次：
     // 否则用户手动返回列表后，任意一次 sessions 变动都会把他又拽回对话页。
     @State private var primaryChoiceMade = false
@@ -339,6 +342,16 @@ private struct RootNavigationHost: View, Equatable {
 
                 Spacer(minLength: 0)
 
+                // 用户 2026-10-13：工作区文件入口（原来在首页「···」里，那个被删了）。
+                // 只有连着电脑才有意义，所以不连时就隐藏。
+                if store.gateway.state.isConnected {
+                    drawerItem("工作区文件", icon: {
+                        Image(systemName: "folder")
+                            .font(.system(size: 20, weight: .medium))
+                            .frame(width: 24)
+                    }, action: { showsRootWorkspaceFiles = true })
+                }
+
                 // 用户 2026-10-12：「设置固定在最下面，和我的头像也在下面，
                 // 点击头像可以编辑我的个人信息」—— 头像行在设置上面，设置钉在最底。
                 Button {
@@ -381,6 +394,9 @@ private struct RootNavigationHost: View, Equatable {
         .sheet(isPresented: $showProfileEdit) {
             ProfileEditView()
                 .environmentObject(store)
+        }
+        .sheet(isPresented: $showsRootWorkspaceFiles) {
+            WorkspaceFilesSheet(store: store, sessionID: store.selectedSessionId)
         }
     }
 

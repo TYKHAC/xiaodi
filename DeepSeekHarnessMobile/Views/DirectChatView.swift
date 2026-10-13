@@ -128,9 +128,15 @@ struct DirectChatView: View {
                 .font(store.nameFont.font(size: 27))
                 .tracking(store.nameFont.tracking)
                 .foregroundStyle(.primary)
-            Text("准备就绪")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            // 用户 2026-10-13：加一颗赤红点（全 App 唯一那记红，表示待命/就绪）
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(ZhuTheme.dangerRed)
+                    .frame(width: 6, height: 6)
+                Text("准备就绪")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
