@@ -237,6 +237,15 @@ struct DirectChatView: View {
         )
     }
 
+    /// 对话正文字体 —— 用户 2026-10-13：「可选择的字体是针对对话的」。
+    /// 用户没选（bodyFontID 为空）就用系统字体；选了就套上，字号仍按调用处给的大小。
+    private func bodyFont(size: CGFloat) -> Font {
+        if let chosen = store.bodyFont {
+            return chosen.font(size: size)
+        }
+        return .system(size: size)
+    }
+
     private func bubble(_ role: String, _ text: String, imageName: String? = nil) -> some View {
         // 用户 2026-10-11 定案：**对话不要框框** —— 纯文字，靠左右对齐区分；
         // Hestia 这边带「图标 + 名字」（头像 + Hestia 小标）。
@@ -264,7 +273,7 @@ struct DirectChatView: View {
                         if !text.isEmpty {
                             Text(text)
                                 .textSelection(.enabled)
-                                .font(.system(size: 15))
+                                .font(bodyFont(size: 15))
                                 .foregroundStyle(.primary)
                                 .multilineTextAlignment(.trailing)
                         }
@@ -291,7 +300,7 @@ struct DirectChatView: View {
                             .foregroundStyle(.secondary)
                         Text(text)
                             .textSelection(.enabled)
-                            .font(.system(size: 15))
+                            .font(bodyFont(size: 15))
                             .foregroundStyle(.primary)
                             .multilineTextAlignment(.leading)
                     }

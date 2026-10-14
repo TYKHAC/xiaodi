@@ -307,6 +307,21 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.navigationLink)
+
+                // 主题（用户 2026-10-13：「还是没在外观那里看到主题选项」+「主题名字叫 nana」）
+                NavigationLink {
+                    ThemePickerView()
+                        .environmentObject(store)
+                } label: {
+                    HStack(spacing: 12) {
+                        SettingsTile(systemImage: "circle.lefthalf.filled")
+                        Text("主题")
+                        Spacer()
+                        Text(store.theme.title)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             } header: {
                 Text("外观")
             }
@@ -369,8 +384,8 @@ struct SettingsView: View {
                 Text("显示在你发出的每条消息旁边。照片只存在本机；不选就用上面这些符号。")
             }
 
-            // 名字字体：用户 2026-10-11「你给出的选择字体设为自定义字体选择里」
-            // —— 16 个候选太占地方，收成一行 + 二级页去选（用户采纳的问题 C）。
+            // 对话字体：用户 2026-10-13 明确「名字的字体是固定的，可选择的字体是针对对话的」。
+            // 名字「Hestia」固定用 ⑫ 衬线斜体（不再可改），这里这 16 个候选改成作用于**消息正文**。
             Section {
                 NavigationLink {
                     NameFontPickerView()
@@ -378,15 +393,15 @@ struct SettingsView: View {
                 } label: {
                     HStack(spacing: 12) {
                         SettingsTile(systemImage: "textformat")
-                        Text("名字字体")
+                        Text("对话字体")
                         Spacer()
-                        Text(store.nameFont.title)
+                        Text(store.bodyFont?.title ?? "系统默认")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
             } footer: {
-                Text("选 App 名字「Hestia」用的字体（点一下立即生效）。")
+                Text("选对话正文用的字体（点一下立即生效）。名字「Hestia」的字体是固定的。")
             }
         }
         .navigationTitle("设置")
@@ -825,29 +840,45 @@ private struct DefaultModelCard: View {
     }
 }
 
-// MARK: - 名字字体二级页（用户 2026-10-11 采纳问题 C：16 行太长，收成一行 + 进来选）
+// MARK: - 主题二级页（用户 2026-10-13：外观里要有主题选项，主题名 = nana）
 
-struct NameFontPickerView: View {
+struct ThemePickerView: View {
     @EnvironmentObject private var store: AppStore
 
     var body: some View {
         List {
-            ForEach(HestiaNameFont.allCases) { font in
+            ForEach(HestiaTheme.allCases) { theme in
                 Button {
-                    store.nameFontID = font.rawValue
+                    store.themeID = theme.rawValue
                 } label: {
                     HStack(spacing: 12) {
+                        // 主题色板预览：纸白 / 墨黑 / 一记赤红
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(theme.paper)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
+                            VStack(spacing: 3) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(theme.ink)
+                                    .frame(width: 22, height: 22)
+                                Circle()
+                                    .fill(theme.red)
+                                    .frame(width: 6, height: 6)
+                            }
+                        }
+                        .frame(width: 44, height: 44)
+
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Hestia")
-                                .font(font.font(size: 26))
-                                .tracking(font.tracking)
+                            Text(theme.title)
+                                .font(.body)
                                 .foregroundStyle(.primary)
-                            Text(font.title)
+                            Text(theme.subtitle)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if store.nameFontID == font.rawValue {
+                        if store.themeID == theme.rawValue {
                             Image(systemName: "checkmark")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.primary)
@@ -857,7 +888,71 @@ struct NameFontPickerView: View {
                 .buttonStyle(.plain)
             }
         }
-        .navigationTitle("名字字体")
+        .navigationTitle("主题")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - 对话字体二级页（用户 2026-10-13：名字固定、可选的是「对话」字体）
+
+struct NameFontPickerView: View {
+    @EnvironmentObject private var store: AppStore
+
+    /// 预览用的句子：用**对话正文**的口吻，而不是「Hestia」——
+    /// 因为这 16 个候选现在的落点是消息正文。
+    private let sample = "今天要做什么？"
+
+    var body: some View {
+        List {
+            // 首行「系统默认」= 不套自定义字体（bodyFontID 置空）
+            Button {
+                store.bodyFontID = ""
+            } label: {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(sample)
+                            .font(.system(size: 17))
+                            .foregroundStyle(.primary)
+                        Text("系统默认")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if store.bodyFontID.isEmpty {
+                        Image(systemName: "checkmark")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            ForEach(HestiaNameFont.allCases) { font in
+                Button {
+                    store.bodyFontID = font.rawValue
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(sample)
+                                .font(font.font(size: 17))
+                                .tracking(font.tracking * 0.6)
+                                .foregroundStyle(.primary)
+                            Text(font.title)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if store.bodyFontID == font.rawValue {
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .navigationTitle("对话字体")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

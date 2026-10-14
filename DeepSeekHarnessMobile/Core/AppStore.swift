@@ -338,17 +338,42 @@ final class AppStore: ObservableObject {
     /// 「转文字」手势的落点：语音识别结果先放这里，页面取走后清空（不直接发送）
     @Published var voiceDraftToComposer: String?
 
-    /// App 名字（Hestia）用的字体 —— 用户 2026-10-11：把设计稿那 16 个候选做成可选。
-    /// 直接持久化到 UserDefaults（不占用偏好协议，改动最小）。
-    @Published var nameFontID: String =
-        UserDefaults.standard.string(forKey: "hestia.nameFont") ?? HestiaNameFont.baskervilleItalic.rawValue
+    /// 界面主题 —— 用户 2026-10-13：「还是没在外观那里看到主题选项」，主题名 = `nana`。
+    /// 目前只有 nana 一个（黑白日漫：纸白/墨黑 + 极淡网点 + 一记赤红 #D8232A）。
+    /// 做成可选项是为了以后能加别的（比如纯白极简、纯黑暗色）。
+    @Published var themeID: String =
+        UserDefaults.standard.string(forKey: "hestia.theme") ?? HestiaTheme.nana.rawValue
+    {
+        didSet { UserDefaults.standard.set(themeID, forKey: "hestia.theme") }
+    }
+
+    /// 当前主题（取不到就退回 nana）
+    var theme: HestiaTheme {
+        HestiaTheme(rawValue: themeID) ?? .nana
+    }
+
+    /// App 名字（Hestia）用的字体 —— **固定**，不再让用户选。
+    /// 用户 2026-10-13 明确：「名字的字体是固定的，可选择的字体是针对对话的」。
+    /// 所以这里只保留「读旧值兼容」的作用：老用户之前选过别的，现在一律回到 ⑫ 衬线斜体。
+    @Published var nameFontID: String = HestiaNameFont.baskervilleItalic.rawValue
     {
         didSet { UserDefaults.standard.set(nameFontID, forKey: "hestia.nameFont") }
     }
 
-    /// 当前名字字体（取不到就退回默认的 ⑫ 衬线斜体）
-    var nameFont: HestiaNameFont {
-        HestiaNameFont(rawValue: nameFontID) ?? .baskervilleItalic
+    /// 当前名字字体（**恒定** ⑫ 衬线斜体 / Baskerville-Italic）
+    var nameFont: HestiaNameFont { .baskervilleItalic }
+
+    /// 对话正文字体 —— 用户 2026-10-13：「可选择的字体是针对对话的」。
+    /// 16 个候选和名字那套共用（HestiaNameFont），但作用对象是**消息正文**。
+    @Published var bodyFontID: String =
+        UserDefaults.standard.string(forKey: "hestia.bodyFont") ?? ""
+    {
+        didSet { UserDefaults.standard.set(bodyFontID, forKey: "hestia.bodyFont") }
+    }
+
+    /// 当前对话字体（空 = 系统默认）
+    var bodyFont: HestiaNameFont? {
+        bodyFontID.isEmpty ? nil : HestiaNameFont(rawValue: bodyFontID)
     }
 
     // ── Hestia：用户自己的头像（用户 2026-10-12：「对话头像我发信息这边的可以自己选头像」）──

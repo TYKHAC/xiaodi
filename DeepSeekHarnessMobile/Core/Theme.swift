@@ -21,9 +21,53 @@ enum DSHColor {
     static let success = Color(red: 0.18, green: 0.72, blue: 0.36)
 }
 
+/// 界面主题 —— 用户 2026-10-13：「还是没在外观那里看到主题选项」+
+/// 「主题明细叫 nana」/「主题名字叫 nana」。
+/// nana = 黑白日漫（NANA）风格：纸白 #FFF / 墨黑 #0B0B0C + 极淡网点 + 唯一一记赤红 #D8232A。
+/// 目前只有这一个；做成枚举是为了以后能加新主题而不动调用处。
+enum HestiaTheme: String, CaseIterable, Identifiable {
+    case nana
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .nana: return "nana"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .nana: return "黑白日漫 · 纸白墨黑 + 一记赤红"
+        }
+    }
+
+    /// 浅色模式的纸白底
+    var paper: Color {
+        switch self {
+        case .nana: return Color(red: 1.0, green: 1.0, blue: 1.0)
+        }
+    }
+
+    /// 深色模式的墨黑底
+    var ink: Color {
+        switch self {
+        case .nana: return Color(red: 0.043, green: 0.043, blue: 0.047)
+        }
+    }
+
+    /// 唯一彩色：一记赤红（只用于「准备就绪」状态点 / 危险提示）
+    var red: Color {
+        switch self {
+        case .nana: return Color(red: 0.847, green: 0.137, blue: 0.165)
+        }
+    }
+}
+
 /// App 名字（Hestia）可选字体 —— 用户 2026-10-11：
 /// 「你给出的选择字体设为自定义字体选择里」= 把设计稿里那 16 个候选做成设置项，用户自己挑。
 /// iOS 上就用系统自带字体（不打包字体文件）；名字对不上会退回系统字体，绝不崩。
+/// ⚠️ 2026-10-13 起：名字字体**固定**（⑫ 衬线斜体），这 16 个候选改为作用于**对话正文**。
 enum HestiaNameFont: String, CaseIterable, Identifiable {
     case didot, georgia, sfHeavy, futura, mincho, kaku, mono, impact          // ①～⑧
     case rounded, thinSpaced, baskerville, baskervilleItalic, snell, courier, kaiti, compressed  // ⑨～⑯
@@ -166,11 +210,9 @@ struct DeepOceanBackground: View {
 }
 
 extension HestiaNameFont {
-    /// 当前选中的名字字体（读 UserDefaults，和 AppStore 用同一个键）。
+    /// 名字字体 —— **恒定** ⑫ 衬线斜体（Baskerville-Italic）。
+    /// 用户 2026-10-13：「名字的字体是固定的，可选择的字体是针对对话的」。
     /// 用途：没有 store 的地方（如导航栏 HarnessMark）也能和应用内的名字保持同一字体。
-    /// 用户 2026-10-11 图一：「名称字体统一」。
-    static var current: HestiaNameFont {
-        let raw = UserDefaults.standard.string(forKey: "hestia.nameFont") ?? ""
-        return HestiaNameFont(rawValue: raw) ?? .baskervilleItalic
-    }
+    /// ⚠️ 不再读 UserDefaults —— 否则老用户之前选过的字体会残留，导致名字字体不统一。
+    static var current: HestiaNameFont { .baskervilleItalic }
 }

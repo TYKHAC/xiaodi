@@ -268,8 +268,15 @@ private struct RootNavigationHost: View, Equatable {
 
     @ViewBuilder
     private func drawerPanel(progress: CGFloat, topInset: CGFloat, width: CGFloat) -> some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
+        // 用户 2026-10-13：「你做的头像和设置在会话的下面不是在最下面」。
+        // 病根：原来整块都塞在一个 ScrollView 里，底部用 `Spacer(minLength: 0)` 想
+        // 把它推到底 —— 但 **ScrollView 里的 Spacer 撑不开**（它按内容高度算），
+        // 所以「我的头像 / 设置」就紧跟在会话列表后面一起滚。
+        // 修法：结构改成 `VStack { ScrollView(可滚动部分) ; 固定底栏 }` ——
+        // 底部那块挪出滚动区，才真正钉死在最下面。
+        VStack(alignment: .leading, spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
                 // 用户 2026-10-12「去掉波浪」：抽屉顶部那个水波纹品牌标记删掉。
                 // 品牌字样本来就只留首页顶栏一处（用户 2026-10-10），这里不需要任何标记。
                 Color.clear.frame(height: 6)
@@ -340,57 +347,18 @@ private struct RootNavigationHost: View, Equatable {
                     }
                 }
 
-                Spacer(minLength: 0)
-
-                // 用户 2026-10-13：工作区文件入口（原来在首页「···」里，那个被删了）。
-                // 只有连着电脑才有意义，所以不连时就隐藏。
-                if store.gateway.state.isConnected {
-                    drawerItem("工作区文件", icon: {
-                        Image(systemName: "folder")
-                            .font(.system(size: 20, weight: .medium))
-                            .frame(width: 24)
-                    }, action: { showsRootWorkspaceFiles = true })
                 }
-
-                // 用户 2026-10-12：「设置固定在最下面，和我的头像也在下面，
-                // 点击头像可以编辑我的个人信息」—— 头像行在设置上面，设置钉在最底。
-                Button {
-                    showProfileEdit = true
-                } label: {
-                    HStack(spacing: 10) {
-                        drawerAvatar
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(store.userNickname.isEmpty ? "你" : store.userNickname)
-                                .font(.system(size: 16))
-                                .foregroundStyle(Color(uiColor: .label))
-                            Text("个人信息")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .padding(.bottom, 8)
-
-                drawerItem("设置", icon: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 20, weight: .medium))
-                        .frame(width: 24)
-                }, action: { selectDrawerItem { navigate(to: .settings) } })
+                .padding(.horizontal, 18)
+                .padding(.top, topInset + 18)
+                .foregroundStyle(Color(uiColor: .label))
+                .opacity(0.6 + 0.4 * progress)
+                .scaleEffect(0.9 + 0.1 * progress, anchor: .leading)
+                .accessibilityHidden(progress == 0)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, topInset + 18)
-            .foregroundStyle(Color(uiColor: .label))
-            .opacity(0.6 + 0.4 * progress)
-            .scaleEffect(0.9 + 0.1 * progress, anchor: .leading)
-            .accessibilityHidden(progress == 0)
+            .scrollBounceBehavior(.basedOnSize)
+
+            drawerBottomBar(progress: progress)
         }
-        .scrollBounceBehavior(.basedOnSize)
         .sheet(isPresented: $showProfileEdit) {
             ProfileEditView()
                 .environmentObject(store)
@@ -398,6 +366,65 @@ private struct RootNavigationHost: View, Equatable {
         .sheet(isPresented: $showsRootWorkspaceFiles) {
             WorkspaceFilesSheet(store: store, sessionID: store.selectedSessionId)
         }
+    }
+
+    /// 抽屉固定底栏（移出 ScrollView，才会真的钉在最下面）。
+    /// 用户 2026-10-13：「设置固定在最下面，和我的头像也在下面」。
+    private func drawerBottomBar(progress: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 用户 2026-10-13：工作区文件入口（原来在首页「···」里，那个被删了）。
+            // 只有连着电脑才有意义，所以不连时就隐藏。
+            if store.gateway.state.isConnected {
+                drawerItem("工作区文件", icon: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 20, weight: .medium))
+                        .frame(width: 24)
+                }, action: { showsRootWorkspaceFiles = true })
+            }
+
+            // 用户 2026-10-12：「设置固定在最下面，和我的头像也在下面，
+            // 点击头像可以编辑我的个人信息」—— 头像行在设置上面，设置钉在最底。
+            Button {
+                showProfileEdit = true
+            } label: {
+                HStack(spacing: 10) {
+                    drawerAvatar
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(store.userNickname.isEmpty ? "你" : store.userNickname)
+                            .font(.system(size: 16))
+                            .foregroundStyle(Color(uiColor: .label))
+                        Text("个人信息")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 8)
+
+            drawerItem("设置", icon: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 20, weight: .medium))
+                    .frame(width: 24)
+            }, action: { selectDrawerItem { navigate(to: .settings) } })
+        }
+        .padding(.horizontal, 18)
+        .padding(.bottom, 34)
+        .foregroundStyle(Color(uiColor: .label))
+        .opacity(0.6 + 0.4 * progress)
+        .scaleEffect(0.9 + 0.1 * progress, anchor: .leading)
+        // 和上面滚动区分开：一条极细的分隔线 + 一点点底色，暗示"这是固定的"
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.08))
+                .frame(height: 0.5)
+        }
+        .accessibilityHidden(progress == 0)
     }
 
     /// 抽屉里的小头像（26pt，和对话气泡里那个同一套写法）
