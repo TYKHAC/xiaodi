@@ -565,9 +565,21 @@ struct DirectChatView: View {
         streamingText = ""
         isStreaming = true
 
-        let history = [systemPrompt] + store.activeDirectSession.messages
-        let payload = Self.outgoingPayload(from: history)
         streamTask = Task { @MainActor in
+            // 用户 2026-10-14：「怎么让他回答前检索大脑」
+            // —— 发出去之前先查一次长期大脑，命中就把摘要拼到这一轮消息前面。
+            //    桥不在（没连电脑 / 桥没开）时 brainRecallForPrompt 返回 nil，照常发送，绝不卡住。
+            let history = [systemPrompt] + store.activeDirectSession.messages
+            var payload = Self.outgoingPayload(from: history)            if let recall = await store.brainRecallForPrompt(text),
+               let lastIndex = payload.lastIndex(where: { $0.role == "user" }) {
+                let original = payload[lastIndex]
+                payload[lastIndex] = DirectChatClient.Outgoing(
+                    role: original.role,
+                    text: recall + "\n\n" + original.text,
+                    imageBase64: original.imageBase64
+                )
+            }
+
             do {
                 let stream = DirectChatClient().stream(
                     config: config,

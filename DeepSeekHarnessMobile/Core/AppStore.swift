@@ -564,6 +564,35 @@ final class AppStore: ObservableObject {
         NSError(domain: "brainBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: detail])
     }
 
+    /// 自动检索大脑 —— 用户 2026-10-14：「怎么让他回答前检索大脑」。
+    /// 发消息前调一次 /search，把命中的笔记**摘要**拼成一段上下文，塞进这一轮消息里。
+    /// 设计要点：
+    /// · **绝不阻塞发送** —— 桥不在（没连电脑/没开桥）就静默返回 nil，照常发消息；
+    /// · 只取前 5 条、每条截断，控制 token；
+    /// · 返回的是一段**要拼进 user 消息**的文字，不改历史。
+    func brainRecallForPrompt(_ query: String, limit: Int = 5) async -> String? {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 太短的问题（"嗯""好"）不值得查
+        guard trimmed.count >= 3 else { return nil }
+        guard let hits = try? await brainSearch(trimmed), !hits.isEmpty else { return nil }
+
+        var lines: [String] = []
+        for hit in hits.prefix(limit) {
+            let title = hit.t.trimmingCharacters(in: .whitespacesAndNewlines)
+            var body = (hit.m ?? "").replacingOccurrences(of: "\n", with: " ")
+            if body.count > 220 { body = String(body.prefix(220)) + "…" }
+            if title.isEmpty && body.isEmpty { continue }
+            lines.append("· \(title)：\(body)")
+        }
+        guard !lines.isEmpty else { return nil }
+
+        return """
+        〔以下是这台设备的长期大脑里、和你这句话相关的既有记录，请优先依据它们回答；
+        若它们与问题无关就忽略。不要向用户复述这一段。〕
+        \(lines.joined(separator: "\n"))
+        """
+    }
+
     /// GET /search?q=&k= → brain.mjs search --json 的 { hits: [...] }
     func brainSearch(_ query: String) async throws -> [BrainHit] {
         guard let base = brainBridgeBase else {
