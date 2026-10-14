@@ -2280,21 +2280,40 @@ private struct ProfileEditView: View {
         NavigationStack {
             Form {
                 Section {
-                    HStack(spacing: 14) {
-                        bigAvatar
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(store.userNickname.isEmpty ? "你" : store.userNickname)
-                                .font(.system(size: 17, weight: .medium))
-                            Text("显示在你发出的消息旁边")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    // 用户 2026-10-14：「点我头像就可以进入个人信息编辑，然后点击头像就能换」
+                    // —— 大头像本身就是按钮，点一下直接开相册。
                     Button {
                         showLibrary = true
                     } label: {
-                        Label("从相册选照片", systemImage: "photo")
+                        HStack(spacing: 14) {
+                            bigAvatar
+                                .overlay(alignment: .bottomTrailing) {
+                                    // 小小的相机角标，暗示「这里能换」
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 9, weight: .semibold))
+                                        .foregroundStyle(Color(uiColor: .systemBackground))
+                                        .frame(width: 20, height: 20)
+                                        .background(
+                                            Circle().fill(Color.primary)
+                                        )
+                                        .overlay(
+                                            Circle().strokeBorder(Color(uiColor: .systemBackground), lineWidth: 2)
+                                        )
+                                        .offset(x: 3, y: 3)
+                                }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(store.userNickname.isEmpty ? "你" : store.userNickname)
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundStyle(.primary)
+                                Text("点这里换头像")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     if store.userAvatarImageName != nil {
                         Button {
                             store.userAvatarImageName = nil
