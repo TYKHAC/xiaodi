@@ -454,39 +454,41 @@ struct DirectChatView: View {
         .background(.ultraThinMaterial)
     }
 
-    /// 按住说话浮层（用户 2026-10-12 设计稿定案）：
-    /// 两片**弧形、一样大**（各 112×64，上圆下平，左右各张开 6°，像两片花瓣托着圆球）——
-    /// 左「取消」右「转文字」，中间一排音量波形；球下方「松开 发送」。
-    /// 左上滑 → 取消变赤红；右上滑 → 转文字变赤红；没滑的那侧虚化。
+    /// 按住说话浮层（用户 2026-10-14 定稿）：
+    /// · 两片**各占一半宽、整块高**（用户：「实际触发区域跟图二红框一样」）
+    /// · **不要有明显边界**（去掉原来的灰底 + 描边，只留文字；激活时字变赤红）
+    /// · **不要箭头**（原来是「↖ 取消」「转文字 ↗」，现在纯文字）
+    /// · 中间一排音量波形 + 球下方提示
     private var voiceGestures: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .center, spacing: 8) {
+        VStack(spacing: 8) {
+            // 两片并排铺满整个宽度 —— 每一侧整块都是可滑区域
+            HStack(alignment: .bottom, spacing: 0) {
                 arcPill(
                     title: voiceSlide == .cancel ? "松开 取消" : "取消",
                     active: voiceSlide == .cancel,
                     dim: hintOpacity(for: .cancel)
                 )
-                // 音量波形（七根，居中）
-                HStack(alignment: .center, spacing: 3) {
-                    ForEach(0..<7, id: \.self) { index in
-                        Capsule()
-                            .fill(Color.primary.opacity(0.75))
-                            .frame(width: 4, height: waveHeight(index))
-                    }
-                }
-                .frame(height: 26)
                 arcPill(
-                    title: voiceSlide == .toText ? "转文字 ✓" : "转文字",
+                    title: voiceSlide == .toText ? "松开 转文字" : "转文字",
                     active: voiceSlide == .toText,
                     dim: hintOpacity(for: .toText)
                 )
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 8)
+
+            // 音量波形（七根，居中）
+            HStack(alignment: .center, spacing: 3) {
+                ForEach(0..<7, id: \.self) { index in
+                    Capsule()
+                        .fill(Color.primary.opacity(0.75))
+                        .frame(width: 4, height: waveHeight(index))
+                }
+            }
+            .frame(height: 26)
 
             Text(voiceSlide == .cancel
-                 ? "松开手指，取消发送"
-                 : (voiceSlide == .toText ? "松开转成文字，填进输入框" : "松开 发送"))
+                 ? "松开 取消"
+                 : (voiceSlide == .toText ? "松开 转文字" : "松开 发送"))
                 .font(.system(size: 14))
                 .foregroundStyle(voiceSlide == .none ? Color.secondary : ZhuTheme.dangerRed)
         }
@@ -494,19 +496,17 @@ struct DirectChatView: View {
         .animation(.easeOut(duration: 0.15), value: voiceSlide)
     }
 
-    /// 单片弧形提示（112×64，上圆下平；激活时赤红）
+    /// 半边提示块（用户 2026-10-14：触发区域 = 整块，不要明显边界）。
+    /// 无底色、无描边；激活时只把文字变赤红。
     private func arcPill(title: String, active: Bool, dim: Double) -> some View {
-        ZStack {
-            ArcPillShape()
-                .fill(active ? ZhuTheme.dangerRed.opacity(0.12) : Color.primary.opacity(0.08))
-            ArcPillShape()
-                .stroke(active ? ZhuTheme.dangerRed : Color.primary.opacity(0.28), lineWidth: 1)
-            Text(title)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(active ? ZhuTheme.dangerRed : Color.primary)
-        }
-        .frame(width: 112, height: 64)
-        .opacity(dim)
+        Text(title)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(active ? ZhuTheme.dangerRed : Color.primary)
+            .frame(maxWidth: .infinity)      // 各占一半宽
+            .frame(height: 96, alignment: .bottom)  // 整块高 = 触发区域
+            .padding(.bottom, 10)
+            .contentShape(Rectangle())       // 整块可点（不只是文字）
+            .opacity(dim)
     }
 
     /// 两侧提示的透明度：正在滑的那一侧清晰，另一侧虚化；
