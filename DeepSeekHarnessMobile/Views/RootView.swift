@@ -370,6 +370,7 @@ private struct RootNavigationHost: View, Equatable {
 
     /// 抽屉固定底栏（移出 ScrollView，才会真的钉在最下面）。
     /// 用户 2026-10-13：「设置固定在最下面，和我的头像也在下面」。
+    /// 用户 2026-10-14：「个人信息和设置并排，个人信息左，设置右」。
     private func drawerBottomBar(progress: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // 用户 2026-10-13：工作区文件入口（原来在首页「···」里，那个被删了）。
@@ -382,43 +383,57 @@ private struct RootNavigationHost: View, Equatable {
                 }, action: { showsRootWorkspaceFiles = true })
             }
 
-            // 用户 2026-10-12：「设置固定在最下面，和我的头像也在下面，
-            // 点击头像可以编辑我的个人信息」—— 头像行在设置上面，设置钉在最底。
-            Button {
-                showProfileEdit = true
-            } label: {
-                HStack(spacing: 10) {
-                    drawerAvatar
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(store.userNickname.isEmpty ? "你" : store.userNickname)
+            // 用户 2026-10-14：「个人信息和设置并排，个人信息左，设置右」。
+            // 两块各占一半宽，用同样高的行高，看起来是一条底栏的两半。
+            HStack(spacing: 0) {
+                // 左：个人信息（头像 + 名字，点一下进个人信息页）
+                Button {
+                    showProfileEdit = true
+                } label: {
+                    HStack(spacing: 10) {
+                        drawerAvatar
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(store.userNickname.isEmpty ? "你" : store.userNickname)
+                                .font(.system(size: 16))
+                                .foregroundStyle(Color(uiColor: .label))
+                                .lineLimit(1)
+                            Text("个人信息")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // 右：设置
+                Button {
+                    selectDrawerItem { navigate(to: .settings) }
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 20, weight: .medium))
+                            .frame(width: 24)
+                        Text("设置")
                             .font(.system(size: 16))
                             .foregroundStyle(Color(uiColor: .label))
-                        Text("个人信息")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
-            .padding(.bottom, 8)
-
-            drawerItem("设置", icon: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 20, weight: .medium))
-                    .frame(width: 24)
-            }, action: { selectDrawerItem { navigate(to: .settings) } })
+            .padding(.top, 12)
         }
         .padding(.horizontal, 18)
         .padding(.bottom, 34)
         .foregroundStyle(Color(uiColor: .label))
         .opacity(0.6 + 0.4 * progress)
         .scaleEffect(0.9 + 0.1 * progress, anchor: .leading)
-        // 和上面滚动区分开：一条极细的分隔线 + 一点点底色，暗示"这是固定的"
+        // 和上面滚动区分开：一条极细的分隔线，暗示"这是固定的"
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(Color.primary.opacity(0.08))
@@ -2275,17 +2290,22 @@ private struct ProfileEditView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.dismiss) private var dismiss
     @State private var showLibrary = false
+    /// 用户 2026-10-14：「点击昵称可以改昵称」—— 点名字弹这个输入框
+    @State private var showNicknameEditor = false
+    @State private var nicknameDraft = ""
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     // 用户 2026-10-14：「点我头像就可以进入个人信息编辑，然后点击头像就能换」
-                    // —— 大头像本身就是按钮，点一下直接开相册。
-                    Button {
-                        showLibrary = true
-                    } label: {
-                        HStack(spacing: 14) {
+                    //                「点击昵称可以改昵称」
+                    // —— 两件事各自可点：头像 → 开相册；名字 → 弹输入框改昵称。
+                    HStack(spacing: 14) {
+                        // 头像：点一下开相册
+                        Button {
+                            showLibrary = true
+                        } label: {
                             bigAvatar
                                 .overlay(alignment: .bottomTrailing) {
                                     // 小小的相机角标，暗示「这里能换」
@@ -2301,19 +2321,28 @@ private struct ProfileEditView: View {
                                         )
                                         .offset(x: 3, y: 3)
                                 }
+                        }
+                        .buttonStyle(.plain)
+
+                        // 昵称：点一下弹输入框（不再常驻一个 TextField）
+                        Button {
+                            nicknameDraft = store.userNickname
+                            showNicknameEditor = true
+                        } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(store.userNickname.isEmpty ? "你" : store.userNickname)
                                     .font(.system(size: 17, weight: .medium))
                                     .foregroundStyle(.primary)
-                                Text("点这里换头像")
+                                Text("点头像换照片 · 点名字改昵称")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            Spacer()
+                            .contentShape(Rectangle())
                         }
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
                     if store.userAvatarImageName != nil {
                         Button {
                             store.userAvatarImageName = nil
@@ -2365,6 +2394,18 @@ private struct ProfileEditView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { dismiss() }
                 }
+            }
+            // 用户 2026-10-14：「点击昵称可以改昵称」—— 点名字弹这个
+            .alert("改昵称", isPresented: $showNicknameEditor) {
+                TextField("昵称", text: $nicknameDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("取消", role: .cancel) { }
+                Button("保存") {
+                    store.userNickname = nicknameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            } message: {
+                Text("留空就显示「你」。")
             }
             .sheet(isPresented: $showLibrary) {
                 PhotoLibraryPicker { image in
