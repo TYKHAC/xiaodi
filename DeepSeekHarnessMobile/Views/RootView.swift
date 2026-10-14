@@ -2325,15 +2325,7 @@ private struct ProfileEditView: View {
                     Text("头像")
                 }
 
-                Section {
-                    TextField("昵称", text: $store.userNickname)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("昵称")
-                } footer: {
-                    Text("留空就显示「你」。")
-                }
+                // 用户 2026-10-14：昵称那一块删掉（截图上圈的就是它）。
 
                 Section {
                     ScrollView(.horizontal, showsIndicators: false) {
