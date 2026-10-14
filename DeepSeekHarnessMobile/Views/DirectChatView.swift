@@ -616,7 +616,8 @@ struct DirectChatView: View {
                 from: history,
                 currentQuestion: text,
                 contextWindow: config.contextWindow
-            )            if let recall = await store.brainRecallForPrompt(text),
+            )
+            if let recall = await store.brainRecallForPrompt(text),
                let lastIndex = payload.lastIndex(where: { $0.role == "user" }) {
                 let original = payload[lastIndex]
                 payload[lastIndex] = DirectChatClient.Outgoing(
