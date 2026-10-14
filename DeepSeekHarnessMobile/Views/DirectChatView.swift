@@ -456,18 +456,31 @@ struct DirectChatView: View {
 
     /// 按住说话浮层（用户 2026-10-14 定稿）：
     /// · 两片**各占一半宽、整块高**（用户：「实际触发区域跟图二红框一样」）
-    /// · **不要有明显边界**（去掉原来的灰底 + 描边，只留文字；激活时字变赤红）
+    /// · **不要有明显边界**（去掉灰底 + 描边，只留文字；激活时字变赤红）
     /// · **不要箭头**（原来是「↖ 取消」「转文字 ↗」，现在纯文字）
-    /// · 中间一排音量波形 + 球下方提示
+    /// · 用户 2026-10-14 追加：「把这三个调高点，跟 nana 一致」
+    ///   —— 「取消 / 波形 / 转文字」三样整体**上移**（原来贴在最底下），
+    ///      并且统一成 nana 的黑白（文字用主题色，不用微信那种深灰块）。
     private var voiceGestures: some View {
-        VStack(spacing: 8) {
-            // 两片并排铺满整个宽度 —— 每一侧整块都是可滑区域
-            HStack(alignment: .bottom, spacing: 0) {
+        VStack(spacing: 0) {
+            // ── 三样并排：取消 ·（波形）· 转文字，整体上移 ──
+            HStack(alignment: .center, spacing: 0) {
                 arcPill(
                     title: voiceSlide == .cancel ? "松开 取消" : "取消",
                     active: voiceSlide == .cancel,
                     dim: hintOpacity(for: .cancel)
                 )
+
+                // 音量波形（七根，居中，nana 的墨黑）
+                HStack(alignment: .center, spacing: 3) {
+                    ForEach(0..<7, id: \.self) { index in
+                        Capsule()
+                            .fill(Color.primary.opacity(0.85))
+                            .frame(width: 4, height: waveHeight(index))
+                    }
+                }
+                .frame(height: 30)
+
                 arcPill(
                     title: voiceSlide == .toText ? "松开 转文字" : "转文字",
                     active: voiceSlide == .toText,
@@ -475,37 +488,29 @@ struct DirectChatView: View {
                 )
             }
             .frame(maxWidth: .infinity)
-
-            // 音量波形（七根，居中）
-            HStack(alignment: .center, spacing: 3) {
-                ForEach(0..<7, id: \.self) { index in
-                    Capsule()
-                        .fill(Color.primary.opacity(0.75))
-                        .frame(width: 4, height: waveHeight(index))
-                }
-            }
-            .frame(height: 26)
+            // ⬆️ 这就是「调高点」：整排往上抬，不贴着屏幕底边
+            .padding(.bottom, 96)
 
             Text(voiceSlide == .cancel
                  ? "松开 取消"
                  : (voiceSlide == .toText ? "松开 转文字" : "松开 发送"))
                 .font(.system(size: 14))
                 .foregroundStyle(voiceSlide == .none ? Color.secondary : ZhuTheme.dangerRed)
+                .padding(.bottom, 26)
         }
         .frame(maxWidth: .infinity)
         .animation(.easeOut(duration: 0.15), value: voiceSlide)
     }
 
-    /// 半边提示块（用户 2026-10-14：触发区域 = 整块，不要明显边界）。
-    /// 无底色、无描边；激活时只把文字变赤红。
+    /// 半边提示文字（用户 2026-10-14：触发区域 = 整块，不要明显边界；跟 nana 一致）。
+    /// 纯文字、无底色无描边；激活时只把文字变赤红。
     private func arcPill(title: String, active: Bool, dim: Double) -> some View {
         Text(title)
-            .font(.system(size: 16, weight: .semibold))
+            .font(.system(size: 17, weight: .semibold))
             .foregroundStyle(active ? ZhuTheme.dangerRed : Color.primary)
             .frame(maxWidth: .infinity)      // 各占一半宽
-            .frame(height: 96, alignment: .bottom)  // 整块高 = 触发区域
-            .padding(.bottom, 10)
-            .contentShape(Rectangle())       // 整块可点（不只是文字）
+            .frame(height: 96)               // 整块高 = 触发区域
+            .contentShape(Rectangle())       // 整块可滑（不只是文字）
             .opacity(dim)
     }
 
