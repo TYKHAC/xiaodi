@@ -408,23 +408,23 @@ private struct RootNavigationHost: View, Equatable {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // 右：设置
+                // 右：设置（用户 2026-10-14：「设置靠右」—— 所以整块内容靠右边摆）
                 Button {
                     selectDrawerItem { navigate(to: .settings) }
                 } label: {
                     HStack(spacing: 14) {
+                        Spacer(minLength: 0)
                         Image(systemName: "gearshape")
                             .font(.system(size: 20, weight: .medium))
                             .frame(width: 24)
                         Text("设置")
                             .font(.system(size: 16))
                             .foregroundStyle(Color(uiColor: .label))
-                        Spacer(minLength: 0)
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .padding(.top, 12)
         }

@@ -247,10 +247,30 @@ private extension GatewayQuestionRequestStatus {
 }
 
 enum InterfaceStyle: String, CaseIterable, Identifiable {
-    case system, light, dark
+    /// 用户 2026-10-14：「主题放进界面里呀，就是界面多一个 nana 的选项」
+    /// —— 所以 `nana` 就是第 4 个「界面」选项：黑白日漫主题（纸白/墨黑 + 极淡网点 + 一记赤红）。
+    /// 它和 light/dark 不冲突：nana 只决定**配色主题**，明暗仍跟随系统
+    /// （`.colorScheme` 给 nil = 跟随系统），这样深浅色下都是 nana 的纸白/墨黑。
+    case system, light, dark, nana
     var id: String { rawValue }
-    var title: String { switch self { case .system: String(localized: "跟随系统"); case .light: String(localized: "浅色"); case .dark: String(localized: "深色") } }
-    var colorScheme: ColorScheme? { switch self { case .system: nil; case .light: .light; case .dark: .dark } }
+    var title: String {
+        switch self {
+        case .system: String(localized: "跟随系统")
+        case .light: String(localized: "浅色")
+        case .dark: String(localized: "深色")
+        case .nana: HestiaTheme.nana.title
+        }
+    }
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        case .nana: nil          // nana 作为「皮肤」：明暗仍跟随系统
+        }
+    }
+    /// 是否走 nana 主题（黑白日漫：网点 + 纸白/墨黑 + 一记赤红）
+    var isNana: Bool { self == .nana }
 }
 
 enum AppLanguage: String, CaseIterable, Identifiable {
@@ -707,7 +727,15 @@ final class AppStore: ObservableObject {
     @Published var workspaceCreationIsLoading = false
     @Published var protocolNotices: [GatewayNotice] = []
     @Published var endpoint: String { didSet { preferences.endpoint = endpoint } }
-    @Published var interfaceStyle: InterfaceStyle = .system
+    /// 界面选择（跟随系统 / 浅色 / 深色 / **nana**）。
+    /// 用户 2026-10-14：nana 就是这里的第 4 个选项（主题合并进「界面」）。
+    /// ⚠️ 原来这里没有持久化 —— 选完重启就回「跟随系统」。现在存 UserDefaults 并在启动时读回。
+    @Published var interfaceStyle: InterfaceStyle =
+        InterfaceStyle(rawValue: UserDefaults.standard.string(forKey: "hestia.interfaceStyle") ?? "")
+        ?? .system
+    {
+        didSet { UserDefaults.standard.set(interfaceStyle.rawValue, forKey: "hestia.interfaceStyle") }
+    }
     @Published var appLanguage: AppLanguage {
         didSet { appLanguage.apply() }
     }

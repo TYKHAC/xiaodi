@@ -299,27 +299,15 @@ struct SettingsView: View {
             }
 
             Section {
+                // 用户 2026-10-14：「主题放进界面里呀，就是界面多一个 nana 的选项」
+                // —— 原来「界面」（明暗）和「主题」是两行，现在合并成一个：
+                //    InterfaceStyle 多了 .nana 这个 case，所以 allCases 自然就把它列出来了。
                 Picker("界面", selection: $store.interfaceStyle) {
                     ForEach(InterfaceStyle.allCases) {
                         Text($0.title).tag($0)
                     }
                 }
                 .pickerStyle(.navigationLink)
-
-                // 主题（用户 2026-10-13：「还是没在外观那里看到主题选项」+「主题名字叫 nana」）
-                NavigationLink {
-                    ThemePickerView()
-                        .environmentObject(store)
-                } label: {
-                    HStack(spacing: 12) {
-                        SettingsTile(systemImage: "circle.lefthalf.filled")
-                        Text("主题")
-                        Spacer()
-                        Text(store.theme.title)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
             } header: {
                 Text("外观")
             }
@@ -778,58 +766,11 @@ private struct DefaultModelCard: View {
     }
 }
 
-// MARK: - 主题二级页（用户 2026-10-13：外观里要有主题选项，主题名 = nana）
-
-struct ThemePickerView: View {
-    @EnvironmentObject private var store: AppStore
-
-    var body: some View {
-        List {
-            ForEach(HestiaTheme.allCases) { theme in
-                Button {
-                    store.themeID = theme.rawValue
-                } label: {
-                    HStack(spacing: 12) {
-                        // 主题色板预览：纸白 / 墨黑 / 一记赤红
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(theme.paper)
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(0.18), lineWidth: 1)
-                            VStack(spacing: 3) {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(theme.ink)
-                                    .frame(width: 22, height: 22)
-                                Circle()
-                                    .fill(theme.red)
-                                    .frame(width: 6, height: 6)
-                            }
-                        }
-                        .frame(width: 44, height: 44)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(theme.title)
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                            Text(theme.subtitle)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if store.themeID == theme.rawValue {
-                            Image(systemName: "checkmark")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.primary)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .navigationTitle("主题")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
+// MARK: - 主题二级页已移除
+// 用户 2026-10-14：「主题放进界面里呀，就是界面多一个 nana 的选项」
+// —— 原来的「主题」独立一行 + 独立的 ThemePickerView 都不再需要，
+//    nana 现在是 InterfaceStyle 的一个 case，就在「界面」选择器里。
+//    （store.themeID / store.theme 保留：老版本存过 hestia.theme 的用户不受影响。）
 
 // MARK: - 对话字体二级页（用户 2026-10-13：名字固定、可选的是「对话」字体）
 
