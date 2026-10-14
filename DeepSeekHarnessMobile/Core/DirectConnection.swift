@@ -22,6 +22,11 @@ struct DirectConnectionConfig: Codable, Equatable {
     /// OpenAI 兼容 base URL（Hestia：默认留空，用户填自己的中转/服务商地址）
     var baseURL: String
     var model: String
+    /// 上下文窗口（token）—— 用户 2026-10-14：「加上下文用量」。
+    /// 直连时手机拿不到电脑端那种 pressureTokens（那是 DSH 自己报的），
+    /// 所以这里**本地估算**：估算 token / contextWindow = 用量进度。
+    /// 默认 128k（主流模型常见值），用户可按自己的模型改。
+    var contextWindow: Int = 128_000
 
     static let defaultsKey = "xiaodi.directConfig"
     static let `default` = DirectConnectionConfig(
@@ -29,6 +34,23 @@ struct DirectConnectionConfig: Codable, Equatable {
         baseURL: "",
         model: ""
     )
+
+    init(enabled: Bool, baseURL: String, model: String, contextWindow: Int = 128_000) {
+        self.enabled = enabled
+        self.baseURL = baseURL
+        self.model = model
+        self.contextWindow = contextWindow
+    }
+
+    /// 手写解码：老数据里没有 contextWindow 也要能读出来，
+    /// 否则老用户升级后配置直接失效（等于要重填）。
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        baseURL = try c.decodeIfPresent(String.self, forKey: .baseURL) ?? ""
+        model = try c.decodeIfPresent(String.self, forKey: .model) ?? ""
+        contextWindow = try c.decodeIfPresent(Int.self, forKey: .contextWindow) ?? 128_000
+    }
 
     static var saved: DirectConnectionConfig {
         guard let data = UserDefaults.standard.data(forKey: defaultsKey),
@@ -191,6 +213,41 @@ struct DirectChatSession: Codable, Identifiable, Equatable, Hashable {
     var title: String
     var messages: [DirectChatMessage] = []
     var updatedAt: Date = Date()
+}
+
+/// 本地 token 估算 —— 用户 2026-10-14：「加上下文用量」。
+/// 直连模式下手机拿不到「真实用量」（那要模型服务商返回），所以**估**：
+/// · 中文/日文等 CJK：约 1 字 ≈ 1 token（保守偏高，宁可高估）
+/// · 拉丁字母/数字：约 4 字符 ≈ 1 token
+/// 目的只是给用户一个「用了多少」的感觉，不需要精确。
+enum DirectTokenEstimate {
+    static func tokens(in text: String) -> Int {
+        guard !text.isEmpty else { return 0 }
+        var cjk = 0
+        var other = 0
+        for scalar in text.unicodeScalars {
+            switch scalar.value {
+            case 0x3000...0x303F,   // CJK 标点
+                 0x3040...0x30FF,   // 日文假名
+                 0x4E00...0x9FFF,   // 中日韩统一表意
+                 0xAC00...0xD7AF,   // 韩文
+                 0xFF00...0xFFEF:   // 全角
+                cjk += 1
+            default:
+                other += 1
+            }
+        }
+        return cjk + max(1, other / 4) + (other > 0 && other < 4 ? 1 : 0)
+    }
+
+    /// 一段消息数组的总估算（含角色/图片的粗略开销）
+    static func tokens(in messages: [DirectChatMessage]) -> Int {
+        messages.reduce(0) { sum, message in
+            var n = tokens(in: message.content) + 4        // 每条消息的框架开销
+            if message.imageName != nil { n += 900 }        // 一张图约 900 token（保守）
+            return sum + n
+        }
+    }
 }
 
 /// 本地会话持久化（UserDefaults）。旧版单一日志自动迁移成第一个会话。

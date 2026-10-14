@@ -367,8 +367,48 @@ struct DirectChatView: View {
 
     // MARK: - 输入
 
+    /// 上下文用量圈 —— 用户 2026-10-14：「加上下文用量」（看到电脑端那个 31% 圈，手机没有）。
+    /// 直连时拿不到真实用量（要模型服务商返回），所以**本地估算**：
+    /// 估算 token（CJK 按 1 字≈1、拉丁按 4 字符≈1）/ 配置里的 contextWindow。
+    /// 颜色跟随 nana：正常=墨黑/主色，超过 75% 才用那记赤红警示。
+    private var contextUsageRing: some View {
+        let config = DirectConnectionConfig.saved
+        let used = DirectTokenEstimate.tokens(in: store.activeDirectSession.messages)
+            + DirectTokenEstimate.tokens(in: systemPrompt.content)
+        let window = max(1_000, config.contextWindow)
+        let progress = min(1.0, max(0.0, Double(used) / Double(window)))
+        let warn = progress >= 0.75
+
+        return HStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .stroke(Color.primary.opacity(0.14), lineWidth: 2)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(warn ? ZhuTheme.dangerRed : Color.primary,
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            .frame(width: 13, height: 13)
+
+            Text("\(Int(progress * 100))%")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(warn ? ZhuTheme.dangerRed : Color.secondary)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 14)
+        .padding(.bottom, 4)
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .accessibilityLabel("上下文已用 \(Int(progress * 100))%")
+    }
+
     private var inputBar: some View {
         VStack(spacing: 0) {
+            // 用户 2026-10-14「加上下文用量」：有消息时才显示（空对话显示 0% 没意义）
+            if !store.activeDirectSession.messages.isEmpty {
+                contextUsageRing
+            }
+
             // 手势胶囊：**只按住圆球时才出现**（不按不出现 —— 用户 2026-10-10 明确）。
             // CI 截图模式下可由 ZXJ_SHOT=chat-holding* 强制摆出（模拟器没麦克风按不出来）。
             if store.voice.state == .listening || shotMode?.hasPrefix("chat-holding") == true {
