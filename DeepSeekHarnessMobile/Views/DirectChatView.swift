@@ -179,15 +179,19 @@ struct DirectChatView: View {
 
     /// 「Hestia 正在思考…」—— 模型还没吐出字时的占位（用户 2026-10-12 要加，且要有颜色）。
     /// 赤红文字 + 三个赤红点呼吸，用 TimelineView 驱动，不引额外状态。
+    /// 对话两侧头像的统一尺寸 —— 用户 2026-10-14：
+    /// 「对话头像两边一样大，头像搞大一点点」（原来 26pt，看着偏小且两侧不一致）。
+    private static let chatAvatarSize: CGFloat = 32
+
     private var thinkingRow: some View {
         HStack(alignment: .top, spacing: 9) {
             Image("HestiaMark")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 26, height: 26)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .frame(width: Self.chatAvatarSize, height: Self.chatAvatarSize)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
                 )
             VStack(alignment: .leading, spacing: 5) {
@@ -223,16 +227,17 @@ struct DirectChatView: View {
                     .scaledToFill()
             } else {
                 Image(systemName: store.userAvatarSymbol)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.primary.opacity(0.06))
             }
         }
-        .frame(width: 26, height: 26)
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        // 和 Hestia 那边同一个尺寸（用户 2026-10-14：「两边一样大」）
+        .frame(width: Self.chatAvatarSize, height: Self.chatAvatarSize)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
         )
     }
@@ -286,10 +291,10 @@ struct DirectChatView: View {
                     Image("HestiaMark")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 26, height: 26)
-                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .frame(width: Self.chatAvatarSize, height: Self.chatAvatarSize)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.8)
                         )
                     VStack(alignment: .leading, spacing: 3) {
