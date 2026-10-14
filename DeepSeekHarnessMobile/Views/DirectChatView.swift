@@ -610,7 +610,13 @@ struct DirectChatView: View {
             // —— 发出去之前先查一次长期大脑，命中就把摘要拼到这一轮消息前面。
             //    桥不在（没连电脑 / 桥没开）时 brainRecallForPrompt 返回 nil，照常发送，绝不卡住。
             let history = [systemPrompt] + store.activeDirectSession.messages
-            var payload = Self.outgoingPayload(from: history)            if let recall = await store.brainRecallForPrompt(text),
+            // 用户 2026-10-14：不再"全塞历史" —— 超出上限时只带「最近的 + 与当前问题相关的」，
+            // 原始记录一条不删（还在手机本地）。跟 Claude 的 memory 一个思路。
+            var payload = Self.outgoingPayload(
+                from: history,
+                currentQuestion: text,
+                contextWindow: config.contextWindow
+            )            if let recall = await store.brainRecallForPrompt(text),
                let lastIndex = payload.lastIndex(where: { $0.role == "user" }) {
                 let original = payload[lastIndex]
                 payload[lastIndex] = DirectChatClient.Outgoing(
@@ -647,10 +653,24 @@ struct DirectChatView: View {
     /// 把本地会话编成出网负载。
     /// 图片按 base64 内联进请求 —— 每轮都重发太费流量/token，所以只带**最近 2 张**附图的
     /// 消息（够「接着问这张图」用）；更早的图降级成一句文字标记，历史和上下文不断。
-    static func outgoingPayload(from messages: [DirectChatMessage]) -> [DirectChatClient.Outgoing] {
-        let imageIndices = messages.indices.filter { messages[$0].imageName != nil }
+    ///
+    /// 用户 2026-10-14：「其他手机agent不是有记忆功能吗」「你全部执行吧」——
+    /// 学界/工业界主流做法（Claude 的 memory 就是这一条）：**原始记录一条不删，
+    /// 但绝不把全部历史都塞进上下文**；快超上限时改成「最近的几轮 + 与当前问题相关的旧消息」。
+    /// 这样既是「不丢」（本地永远留着），也是「不爆」（请求永远在上限内）。
+    static func outgoingPayload(
+        from messages: [DirectChatMessage],
+        currentQuestion: String = "",
+        contextWindow: Int = 128_000
+    ) -> [DirectChatClient.Outgoing] {
+        let selected = selectMessages(
+            from: messages,
+            currentQuestion: currentQuestion,
+            contextWindow: contextWindow
+        )
+        let imageIndices = selected.indices.filter { selected[$0].imageName != nil }
         let keep = Set(imageIndices.suffix(2))
-        return messages.enumerated().map { index, message in
+        return selected.enumerated().map { index, message in
             var base64: String?
             if keep.contains(index), let name = message.imageName {
                 base64 = DirectImageStore.base64JPEG(named: name)
@@ -661,6 +681,114 @@ struct DirectChatView: View {
             }
             return DirectChatClient.Outgoing(role: message.role, text: text, imageBase64: base64)
         }
+    }
+
+    /// 挑选要出网的消息（用户 2026-10-14 加）。
+    /// 规则，按优先级：
+    ///  1. **最近若干轮**永远带上（对话的连贯性靠它）
+    ///  2. 还在预算内 → 继续往前补更早的消息（尽量给足上下文）
+    ///  3. 预算不够 → 只把**与当前问题相关的**旧消息捞回来（词重合度打分），
+    ///     其余**不塞**（但它们仍在本地，一条没删）
+    ///  4. 系统提示永远第一条
+    static func selectMessages(
+        from messages: [DirectChatMessage],
+        currentQuestion: String,
+        contextWindow: Int
+    ) -> [DirectChatMessage] {
+        guard !messages.isEmpty else { return messages }
+
+        // 预算：只用上下文窗口的一部分留给历史，其余留给「回答 + 大脑检索 + 系统提示」。
+        // 0.55 是保守值（历史占一半多一点，回答才写得开）。
+        let budget = max(1_000, Int(Double(contextWindow) * 0.55))
+        let systemPrefix = messages.first?.role == "system" ? [messages[0]] : []
+        let rest = messages.first?.role == "system" ? Array(messages.dropFirst()) : messages
+        guard !rest.isEmpty else { return messages }
+
+        let systemCost = systemPrefix.reduce(0) { $0 + DirectTokenEstimate.tokens(in: $1.content) + 4 }
+        var remaining = budget - systemCost
+
+        // ① 从最新往回收「最近的消息」，直到预算用完
+        var keptRecent: [DirectChatMessage] = []
+        var cutoff = rest.count            // 已纳入的起点（不含）
+        for index in stride(from: rest.count - 1, through: 0, by: -1) {
+            let message = rest[index]
+            let cost = DirectTokenEstimate.tokens(in: message.content)
+                + 4
+                + (message.imageName != nil ? 900 : 0)
+            if cost > remaining { break }
+            remaining -= cost
+            keptRecent.insert(message, at: 0)
+            cutoff = index
+        }
+
+        // ② 更早的那些，按「与当前问题相关」捞回来（只在还剩预算时）
+        var rescued: [(index: Int, message: DirectChatMessage)] = []
+        let earlier = Array(rest[..<cutoff])
+        if !earlier.isEmpty && remaining > 300 && !currentQuestion.isEmpty {
+            let keywords = Self.keywords(from: currentQuestion)
+            if !keywords.isEmpty {
+                let scored = earlier.enumerated().compactMap { offset, message -> (Int, Int, DirectChatMessage)? in
+                    let score = Self.relevance(message.content, keywords: keywords)
+                    return score > 0 ? (offset, score, message) : nil
+                }
+                .sorted { $0.1 > $1.1 }        // 越相关越靠前
+                for item in scored {
+                    let cost = DirectTokenEstimate.tokens(in: item.2.content) + 4
+                    if cost > remaining { continue }
+                    remaining -= cost
+                    rescued.append((item.0, item.2))
+                }
+            }
+        }
+        rescued.sort { $0.index < $1.index }   // 捞出后仍按原时间顺序排
+
+        // ③ 拼回去：system + 捞回的旧消息 + 最近的消息（保持时间顺序）
+        var result = systemPrefix
+        result.append(contentsOf: rescued.map { $0.message })
+        result.append(contentsOf: keptRecent)
+        return result
+    }
+
+    /// 从中文/英文句子里抠关键词（很粗，够用即可）：去掉常见虚词，取 2 字以上的词。
+    static func keywords(from text: String) -> Set<String> {
+        let stop: Set<String> = ["什么", "怎么", "为什么", "可以", "这个", "那个", "我们", "你们",
+                                 "他们", "一下", "还是", "不是", "没有", "就是", "然后", "现在",
+                                 "已经", "什么样", "如何", "哪些", "多少", "the", "and", "for",
+                                 "with", "that", "this", "what", "how", "why", "you", "are"]
+        var out: Set<String> = []
+        // 英文/数字词
+        var latin = ""
+        for ch in text {
+            if ch.isLetter || ch.isNumber {
+                latin.append(ch)
+            } else {
+                if latin.count >= 3 { out.insert(latin.lowercased()) }
+                latin = ""
+            }
+        }
+        if latin.count >= 3 { out.insert(latin.lowercased()) }
+
+        // 中文：按 2-gram 切（「墨西哥关税」→ 墨西哥/西哥/墨关/关税…）
+        let han = text.filter { $0.unicodeScalars.first.map { (0x4E00...0x9FFF).contains($0.value) } ?? false }
+        let chars = Array(han)
+        if chars.count >= 2 {
+            for i in 0..<(chars.count - 1) {
+                let gram = String(chars[i...i + 1])
+                if !stop.contains(gram) { out.insert(gram) }
+            }
+        }
+        return out
+    }
+
+    /// 相关度 = 命中了几个关键词（粗打分，够筛出"这条跟当前问题有关"就行）。
+    static func relevance(_ text: String, keywords: Set<String>) -> Int {
+        guard !text.isEmpty else { return 0 }
+        let lower = text.lowercased()
+        var score = 0
+        for keyword in keywords where lower.contains(keyword) {
+            score += 1
+        }
+        return score
     }
 
     private func finishAssistant() {

@@ -125,6 +125,13 @@ struct SettingsView: View {
                 SecureField("API Key", text: $directAPIKey)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                // 用户 2026-10-14：「加上下文用量」+「上下文怎么处理」
+                // —— 这里填模型的上下文窗口（token），用来算上面那个百分比，
+                //    以及决定「历史超出时只带最近+相关」的预算。填错不影响聊天，只是百分比不准。
+                TextField("上下文窗口（token，默认 128000）",
+                          value: $store.directConfig.contextWindow,
+                          format: .number)
+                    .keyboardType(.numberPad)
                 Button("保存 Key 到本机 Keychain") {
                     do {
                         let trimmed = directAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
