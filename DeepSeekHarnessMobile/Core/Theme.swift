@@ -196,14 +196,42 @@ struct HalftoneBackground: View {
     }
 }
 
+/// 主题生效状态 —— 用户 2026-10-15：「点了 nana 没有主题」。
+/// 真因：`InterfaceStyle.nana` 当时**只改了 Picker 里的文字**，
+/// `isNana` 没有任何画面读它 → 选了跟没选一模一样。
+/// 这里做一个全局可观察的小单例，让深处（背景）也能跟着切；
+/// 由 `AppStore.interfaceStyle.didSet` 推送。
+final class HestiaThemeState: ObservableObject {
+    static let shared = HestiaThemeState()
+
+    /// 是否 nana 皮肤（纸白/墨黑 + 极淡网点）
+    @Published var isNana: Bool
+
+    private init() {
+        let stored = UserDefaults.standard.string(forKey: "hestia.interfaceStyle") ?? InterfaceStyle.nana.rawValue
+        isNana = stored == InterfaceStyle.nana.rawValue
+    }
+
+    /// 切主题时调用（AppStore 那边推）
+    func apply(_ style: InterfaceStyle) {
+        let next = (style == .nana)
+        if next != isNana { isNana = next }
+    }
+}
+
 /// Hestia 首页背景 —— 黑白日漫「最简」：纸白 / 墨黑 + 极淡网点。
+/// 用户 2026-10-15：**网点只属于 nana 皮肤**；界面选的是「跟随系统/浅色/深色」时
+/// 走素净底（不铺网点），这样在「界面」里切 nana 才看得见变化。
 struct DeepOceanBackground: View {
     @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var themeState = HestiaThemeState.shared
 
     var body: some View {
         ZStack {
             colorScheme == .dark ? Color(white: 0.02) : Color(uiColor: .systemBackground)
-            HalftoneBackground()
+            if themeState.isNana {
+                HalftoneBackground()
+            }
         }
         .ignoresSafeArea()
     }

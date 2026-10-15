@@ -102,11 +102,18 @@ final class VoiceInputController: NSObject, ObservableObject {
     private func checkPermissionProblem() -> String? {
         let mic = AVCaptureDevice.authorizationStatus(for: .audio)
         guard mic == .authorized else {
-            return mic == .denied ? "麦克风权限被拒绝，请在「设置」里打开" : nil
+            // 用户 2026-10-15：`.notDetermined` 原来返回 nil（等于放行），
+            // 结果录音起不来**一声不吭** —— 用户看到的正是「按住只有球会转」。
+            // 现在两种未授权都给明确话术，不再静默失败。
+            return mic == .denied
+                ? "麦克风权限被拒绝，请在「设置」里打开"
+                : "还没授权麦克风 —— 请在弹窗里点「允许」"
         }
         let speech = SFSpeechRecognizer.authorizationStatus()
         guard speech == .authorized else {
-            return speech == .denied ? "语音识别权限被拒绝，请在「设置」里打开" : nil
+            return speech == .denied
+                ? "语音识别权限被拒绝，请在「设置」里打开"
+                : "还没授权语音识别 —— 请在弹窗里点「允许」"
         }
         return nil
     }

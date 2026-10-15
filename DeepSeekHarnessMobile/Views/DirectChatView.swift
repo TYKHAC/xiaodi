@@ -95,7 +95,14 @@ struct DirectChatView: View {
                 .ignoresSafeArea()
         }
         .onDisappear { streamTask?.cancel() }
-        .onAppear { applyShotMode() }
+        .onAppear {
+            applyShotMode()
+            // 用户 2026-10-15：「按住语音键只有球会转，没有其他反应」——
+            // 根因之一：**申请麦克风/语音识别权限的调用只写在远程页
+            // （ConversationView.onAppear），直连页从来没有申请过**，
+            // 所以在这一页按住球时权限一直是 notDetermined，录音起不来。
+            Task { await store.voice.requestPermissionsIfNeeded() }
+        }
         // 用户 2026-10-12「主题没实现」：主题背景（纸白/墨黑 + 极淡网点）原来只挂在
         // WorkspaceView 上，而根页面早就是这一页了 —— 所以真正的页面上根本没有主题。
         .background(DeepOceanBackground())
@@ -367,47 +374,11 @@ struct DirectChatView: View {
 
     // MARK: - 输入
 
-    /// 上下文用量圈 —— 用户 2026-10-14：「加上下文用量」（看到电脑端那个 31% 圈，手机没有）。
-    /// 直连时拿不到真实用量（要模型服务商返回），所以**本地估算**：
-    /// 估算 token（CJK 按 1 字≈1、拉丁按 4 字符≈1）/ 配置里的 contextWindow。
-    /// 颜色跟随 nana：正常=墨黑/主色，超过 75% 才用那记赤红警示。
-    private var contextUsageRing: some View {
-        let config = DirectConnectionConfig.saved
-        let used = DirectTokenEstimate.tokens(in: store.activeDirectSession.messages)
-            + DirectTokenEstimate.tokens(in: systemPrompt.content)
-        let window = max(1_000, config.contextWindow)
-        let progress = min(1.0, max(0.0, Double(used) / Double(window)))
-        let warn = progress >= 0.75
-
-        return HStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .stroke(Color.primary.opacity(0.14), lineWidth: 2)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(warn ? ZhuTheme.dangerRed : Color.primary,
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-            }
-            .frame(width: 13, height: 13)
-
-            Text("\(Int(progress * 100))%")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(warn ? ZhuTheme.dangerRed : Color.secondary)
-                .monospacedDigit()
-        }
-        .padding(.horizontal, 14)
-        .padding(.bottom, 4)
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .accessibilityLabel("上下文已用 \(Int(progress * 100))%")
-    }
-
     private var inputBar: some View {
         VStack(spacing: 0) {
-            // 用户 2026-10-14「加上下文用量」：有消息时才显示（空对话显示 0% 没意义）
-            if !store.activeDirectSession.messages.isEmpty {
-                contextUsageRing
-            }
+            // 用户 2026-10-15：「上下文去掉丑死了」—— 之前加的那个「◐ 31%」小百分比圈
+            // 撤掉，不在对话页显示。（`DirectConnectionConfig.contextWindow` 保留：
+            // 它仍在给「历史超出时只带最近+相关」算预算用。）
 
             // 手势胶囊：**只按住圆球时才出现**（不按不出现 —— 用户 2026-10-10 明确）。
             // CI 截图模式下可由 ZXJ_SHOT=chat-holding* 强制摆出（模拟器没麦克风按不出来）。

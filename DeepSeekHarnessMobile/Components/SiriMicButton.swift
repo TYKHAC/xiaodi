@@ -36,6 +36,9 @@ struct SiriMicButton: View {
     @State private var pulse = false
     /// 按住中的上滑手势方向（用户 2026-10-10：左上=取消 / 右上=转文字）
     @State private var slideMode: VoiceSlideMode = .none
+    /// 本次触摸按下的时刻 / 是不是「轻点」意图（播报中按下 = 想打断，不是想录音）
+    @State private var pressStartedAt: Date?
+    @State private var isTapIntent = false
 
     private var isRecording: Bool { voice.state == .listening }
     private var isTranscribing: Bool { voice.state == .transcribing }
@@ -43,12 +46,16 @@ struct SiriMicButton: View {
     private var isIdle: Bool { !isRecording && !isTranscribing && !isSpeaking }
 
     var body: some View {
-        // 用户 2026-10-13：「按住语音键没有语音输入，没有取消和转文字」——
-        // 原来这颗球是包在 `Button { voice.togglePrimaryButton() }` 里的，
-        // 而 SwiftUI 里 **Button 自己的手势会吃掉挂在它上面的 .onLongPressGesture**，
-        // 于是 pressing 从不触发 → voice.beginRecording() 从不被调用 →
-        // state 永远不是 .listening → 既没有聆听态，也不会出现「取消 / 转文字」浮层。
-        // 改成普通视图：轻点用 onTapGesture，按住用 onLongPressGesture，两者不再打架。
+        // 用户 2026-10-13：「按住语音键没有语音输入，没有取消和转文字」
+        // 用户 2026-10-15：「按住只有球会转，没有其他反应」（真机复报，说明上版仍没修好）
+        //
+        // 两次都没修好的真因：**一个视图上挂了互相打架的多个手势**。
+        //   上版 = `.onTapGesture` + `.onLongPressGesture(pressing:)` + `.simultaneousGesture(DragGesture)`
+        // 外部依据（Swift Forums「Using DragGesture to implement touchDown…」原话）：
+        //   「别用 DragGesture 模拟 touchDown；要用 LongPressGesture」——
+        //   长按与拖拽同挂会互相取消，长按的 pressing 可能永远等不到。
+        // 正确做法：**只留一个连续的 DragGesture(minimumDistance: 0)**，
+        //   按下 / 滑动 / 松手全在里面判 —— 微信那种「按住说话、上滑取消」就是这么实现的。
         ZStack {
             // 高级感波纹 = 柔光晕 + 渐变细环（不再是硬边圆环，用户 2026-10-10
             // 说「波纹不高级」）。球体外面先铺一层呼吸柔光，再让两条极细的
@@ -73,28 +80,19 @@ struct SiriMicButton: View {
         }
         .frame(width: diameter * 1.5, height: diameter * 1.5)
         .contentShape(Circle())
-        // 轻点：播报中 → 打断；空闲 → 取消（原来是 Button 的 action）
-        .onTapGesture {
-            voice.togglePrimaryButton()
-        }
-        // 按住说话 —— 这是整个交互的核心
-        .onLongPressGesture(
-            minimumDuration: 0.12,      // 轻点不误触发
-            maximumDistance: 60,        // 手指滑出 60pt 内仍算按住（上滑手势要留余量）
-            pressing: { pressing in
-                if pressing {
-                    voice.beginRecording()
-                } else if slideMode == .none {
-                    // 普通松手 = 说完发送；带方向的松手由 DragGesture 的 onEnded 处置
-                    voice.endRecording()
-                }
-            },
-            perform: { }
-        )
-        // 上滑手势：按住中向左上滑 = 取消；向右上滑 = 转文字（用户 2026-10-10 定）
-        .simultaneousGesture(
+        // 唯一的手势：按下即开始录音，滑动切「取消/转文字」，松手按方向收尾。
+        .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { value in
+                    // ── 按下（第一次回调）──
+                    if pressStartedAt == nil {
+                        pressStartedAt = Date()
+                        isTapIntent = isSpeaking
+                        if !isSpeaking {
+                            voice.beginRecording()
+                        }
+                    }
+                    // 录音没起（权限被拒等）就不用算方向了
                     guard voice.isHeld else { return }
                     let dx = value.translation.width
                     let dy = value.translation.height
@@ -112,18 +110,36 @@ struct SiriMicButton: View {
                     }
                 }
                 .onEnded { _ in
+                    let startedAt = pressStartedAt
+                    let held = startedAt.map { Date().timeIntervalSince($0) } ?? 0
                     let mode = slideMode
+                    let tapIntent = isTapIntent
+                    pressStartedAt = nil
+                    isTapIntent = false
                     slideMode = .none
                     onSlideModeChange?(.none)
+
+                    // 播报中按下 = 想打断（不录音）
+                    if tapIntent {
+                        voice.togglePrimaryButton()
+                        return
+                    }
+                    guard voice.isHeld else { return }
+
                     switch mode {
                     case .cancel:
                         voice.cancelRecording()
                     case .toText:
-                        // 转文字：把识别结果填进输入框（不直接发送）
+                        // 转文字：识别结果填进输入框（不直接发送）
                         voice.routeTranscriptToDraft = true
-                        if voice.isHeld { voice.endRecording() }
+                        voice.endRecording()
                     case .none:
-                        if voice.isHeld { voice.endRecording() }
+                        // 极短的一下（<0.25s）且还没听到任何字 = 当成轻点，别产生空录音
+                        if held < 0.25 && voice.transcript.isEmpty {
+                            voice.cancelRecording()
+                        } else {
+                            voice.endRecording()
+                        }
                     }
                 }
         )

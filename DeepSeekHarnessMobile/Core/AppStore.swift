@@ -758,12 +758,17 @@ final class AppStore: ObservableObject {
     @Published var endpoint: String { didSet { preferences.endpoint = endpoint } }
     /// 界面选择（跟随系统 / 浅色 / 深色 / **nana**）。
     /// 用户 2026-10-14：nana 就是这里的第 4 个选项（主题合并进「界面」）。
-    /// ⚠️ 原来这里没有持久化 —— 选完重启就回「跟随系统」。现在存 UserDefaults 并在启动时读回。
+    /// 用户 2026-10-15：「点了 nana 没有主题」—— 原来只改了标签，没推给画面。
+    /// 现在：① 默认值改为 nana（保持用户已有的网点外观不变）
+    ///       ② didSet 里把 isNana 推给 HestiaThemeState，背景等深层视图跟着切。
     @Published var interfaceStyle: InterfaceStyle =
         InterfaceStyle(rawValue: UserDefaults.standard.string(forKey: "hestia.interfaceStyle") ?? "")
-        ?? .system
+        ?? .nana
     {
-        didSet { UserDefaults.standard.set(interfaceStyle.rawValue, forKey: "hestia.interfaceStyle") }
+        didSet {
+            UserDefaults.standard.set(interfaceStyle.rawValue, forKey: "hestia.interfaceStyle")
+            HestiaThemeState.shared.apply(interfaceStyle)
+        }
     }
     @Published var appLanguage: AppLanguage {
         didSet { appLanguage.apply() }
